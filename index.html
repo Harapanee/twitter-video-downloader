@@ -394,14 +394,18 @@ body::after {
 
   const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'videy.vedio.cc'];
 
-  // Local proxy detection
-  const useLocalProxy = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const localProxyBase = useLocalProxy ? location.origin + '/proxy?url=' : null;
+  // Proxy detection: available on both localhost (server.py) and Vercel (/api/proxy via rewrite)
+  const isServed = location.protocol === 'http:' || location.protocol === 'https:';
+  const localProxyBase = isServed ? location.origin + '/proxy?url=' : null;
+  // Server-side ffmpeg convert is only available on localhost
+  const useServerConvert = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
   // Show proxy status in subtitle
   const subtitleText = document.getElementById('subtitleText');
-  if (useLocalProxy) {
-    subtitleText.textContent = 'Twitter動画URLから動画を保存 (Local Proxy)';
+  if (isServed) {
+    subtitleText.textContent = useServerConvert
+      ? 'Twitter動画URLから動画を保存 (Local Server)'
+      : 'Twitter動画URLから動画を保存';
   }
 
   function proxyFetch(url) {
@@ -808,8 +812,8 @@ body::after {
     const quality = qualitySelect.selectedOptions[0]?.textContent.split(' ')[0] || '';
     const filename = hlsData.name + '_' + quality + '.mp4';
 
-    // Use server-side ffmpeg conversion if local proxy is available
-    if (localProxyBase) {
+    // Use server-side ffmpeg conversion if running on localhost
+    if (useServerConvert) {
       showProgress();
       updateProgress(20, 'サーバーで変換中...');
 
