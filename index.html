@@ -452,6 +452,11 @@
           <span class="url-desc">動画共有サイト (HLS形式 / 画質選択可能)</span>
           <code class="url-example">https://videy.vedio.cc/...</code>
         </div>
+        <div class="url-type">
+          <span class="url-host">gofile.fun800.click</span>
+          <span class="url-desc">動画共有サイト (HLS形式 / 画質選択可能)</span>
+          <code class="url-example">https://gofile.fun800.click/a2wuUaX</code>
+        </div>
         <p class="url-note">※ HLS形式の動画は自動的にMP4に変換されます。ローカルサーバー利用時はサーバー側ffmpegで高速変換、それ以外はブラウザ内で変換します。</p>
       </div>
     </details>
@@ -503,7 +508,7 @@
   let hlsInstance = null;
   let isDownloading = false;
 
-  const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'video.twimg-com.com', 'videy.vedio.cc'];
+  const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'video.twimg-com.com', 'videy.vedio.cc', 'gofile.fun800.click'];
   const TWEET_HOSTS = ['x.com', 'twitter.com', 'mobile.twitter.com'];
 
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
@@ -563,7 +568,7 @@
         return { valid: true, url: parsed.href, host: parsed.hostname, isTweet: true, tweetUser: match[1], tweetId: match[2] };
       }
       if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
-        return { valid: false, error: '対応サイト: x.com / twitter.com / video.twimg.com / video.twimg-image.cc / video.twimg-com.com / videy.vedio.cc' };
+        return { valid: false, error: '対応サイト: x.com / twitter.com / video.twimg.com / video.twimg-image.cc / video.twimg-com.com / videy.vedio.cc / gofile.fun800.click' };
       }
       return { valid: true, url: parsed.href, host: parsed.hostname };
     } catch {
@@ -796,7 +801,7 @@
         const videoInfo = await extractVideoFromTweet(result.tweetUser, result.tweetId);
         currentUrl = videoInfo.url;
         await loadDirectVideo(videoInfo.url);
-      } else if (result.host === 'video.twimg-image.cc' || result.host === 'video.twimg-com.com' || result.host === 'videy.vedio.cc') {
+      } else if (result.host === 'video.twimg-image.cc' || result.host === 'video.twimg-com.com' || result.host === 'videy.vedio.cc' || result.host === 'gofile.fun800.click') {
         await loadTwimgImageVideo(result.url);
       } else {
         await loadDirectVideo(result.url);
