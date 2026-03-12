@@ -671,10 +671,14 @@
     let playlistUrl = null;
     let directMp4Url = null;
     let videoName = null;
+    let videoFileName = null;
     for (const item of data) {
       if (typeof item === 'string') {
         if (item.endsWith('/playlist.m3u8')) playlistUrl = item;
         if (!directMp4Url && item.match(/^https?:\/\/.*\.mp4$/)) directMp4Url = item;
+        if (!videoFileName && !item.startsWith('http') && item.match(/\.(mp4|mov|avi|mkv|webm)$/i)) {
+          videoFileName = item.replace(/\.[^.]+$/, '');
+        }
         if (!videoName && !item.startsWith('http') && !item.includes('/') && !item.includes('.') && item.length > 1 && item.length < 50) {
           videoName = item;
         }
@@ -683,36 +687,46 @@
 
     if (!playlistUrl && !directMp4Url) throw new Error('動画データが見つかりません');
 
-    const plResp = await proxyFetch(playlistUrl);
-    const plText = await plResp.text();
-    const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
-
-    const baseUrl = playlistUrl.replace(/\/[^/]*$/, '/');
     const qualities = [];
+    let baseUrl = '';
 
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
-        const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
-        const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
-        const path = lines[i + 1];
-        if (path && !path.startsWith('#')) {
-          qualities.push({
-            name: resMatch ? resMatch[1] : 'Unknown',
-            bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0,
-            path: path,
-          });
+    if (playlistUrl) {
+      try {
+        const plResp = await proxyFetch(playlistUrl);
+        if (plResp.ok) {
+          const plText = await plResp.text();
+          const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
+
+          baseUrl = playlistUrl.replace(/\/[^/]*$/, '/');
+
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
+              const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
+              const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
+              const path = lines[i + 1];
+              if (path && !path.startsWith('#')) {
+                qualities.push({
+                  name: resMatch ? resMatch[1] : 'Unknown',
+                  bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0,
+                  path: path,
+                });
+              }
+            }
+          }
+
+          qualities.sort((a, b) => b.bandwidth - a.bandwidth);
         }
+      } catch (e) {
+        console.debug('[parseTwimgImagePage] playlist fetch failed:', e);
       }
     }
-
-    qualities.sort((a, b) => b.bandwidth - a.bandwidth);
 
     return {
       playlistUrl,
       baseUrl,
       qualities,
       directMp4Url,
-      name: videoName || 'twitter_video',
+      name: videoFileName || videoName || 'twitter_video',
     };
   }
 
@@ -817,7 +831,16 @@
   async function loadTwimgImageVideo(url) {
     hlsData = await parseTwimgImagePage(url);
 
-    if (hlsData.qualities.length === 0) throw new Error('動画の画質情報が見つかりません');
+    if (hlsData.qualities.length === 0) {
+      if (hlsData.directMp4Url) {
+        const mp4Url = hlsData.directMp4Url;
+        hlsData = null;
+        currentUrl = mp4Url;
+        await loadDirectVideo(mp4Url);
+        return;
+      }
+      throw new Error('動画の画質情報が見つかりません');
+    }
 
     qualitySelect.innerHTML = '';
     for (const q of hlsData.qualities) {
