@@ -759,48 +759,39 @@ body::after {
 
   // --- Download HLS (fetch segments → transmux → save as MP4) ---
   // --- Transmux TS segments → MP4 using mux.js Transmuxer ---
-  async function transmuxTsToMp4(segmentBuffers) {
-    // Concatenate all TS data into one buffer
-    let totalLen = 0;
-    for (const buf of segmentBuffers) totalLen += buf.byteLength;
-    const allTs = new Uint8Array(totalLen);
-    let pos = 0;
+  function transmuxTsToMp4(segmentBuffers) {
+    const transmuxer = new muxjs.mp4.Transmuxer({
+      keepOriginalTimestamps: false,
+    });
+
+    let initSegment = null;
+    const dataChunks = [];
+    let dataLength = 0;
+
+    transmuxer.on('data', (segment) => {
+      if (!initSegment) {
+        initSegment = new Uint8Array(segment.initSegment);
+      }
+      dataChunks.push(new Uint8Array(segment.data));
+      dataLength += segment.data.byteLength;
+    });
+
+    // Process each segment individually to preserve correct timestamps
     for (const buf of segmentBuffers) {
-      allTs.set(new Uint8Array(buf), pos);
-      pos += buf.byteLength;
+      transmuxer.push(new Uint8Array(buf));
+      transmuxer.flush();
     }
 
-    const transmuxer = new muxjs.mp4.Transmuxer();
+    if (!initSegment) throw new Error('変換に失敗しました');
 
-    return new Promise((resolve, reject) => {
-      let initSegment = null;
-      const dataChunks = [];
-      let dataLength = 0;
-
-      transmuxer.on('data', (segment) => {
-        if (!initSegment) {
-          initSegment = new Uint8Array(segment.initSegment);
-        }
-        dataChunks.push(new Uint8Array(segment.data));
-        dataLength += segment.data.byteLength;
-      });
-
-      transmuxer.on('done', () => {
-        if (!initSegment) { reject(new Error('変換に失敗しました')); return; }
-        const mp4 = new Uint8Array(initSegment.byteLength + dataLength);
-        mp4.set(initSegment, 0);
-        let offset = initSegment.byteLength;
-        for (const chunk of dataChunks) {
-          mp4.set(chunk, offset);
-          offset += chunk.byteLength;
-        }
-        resolve(new Blob([mp4], { type: 'video/mp4' }));
-      });
-
-      // Push all data at once, then flush once
-      transmuxer.push(allTs);
-      transmuxer.flush();
-    });
+    const mp4 = new Uint8Array(initSegment.byteLength + dataLength);
+    mp4.set(initSegment, 0);
+    let offset = initSegment.byteLength;
+    for (const chunk of dataChunks) {
+      mp4.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new Blob([mp4], { type: 'video/mp4' });
   }
 
   async function downloadHls() {
