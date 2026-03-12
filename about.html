@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="about">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>このサイトについて - Twitter Video Downloader</title>
+<meta name="description" content="Twitter Video Downloaderについて。サイトの目的、機能紹介、技術的な仕組みについて説明します。">
+<meta property="og:title" content="このサイトについて - Twitter Video Downloader">
+<meta property="og:description" content="Twitter Video Downloaderの目的と機能について説明します。">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="page-container">
+<div class="content-card">
+
+<h1>このサイトについて</h1>
+
+<h2>Twitter Video Downloaderとは</h2>
+<p>Twitter Video Downloaderは、Twitter（現X）に投稿された動画を簡単にダウンロードできる無料のオンラインツールです。お気に入りの動画をオフラインで視聴したい方や、ネットワーク環境が不安定な場所でも動画を楽しみたい方のために開発されました。</p>
+<p>ユーザー登録やアプリのインストールは一切不要です。ウェブブラウザだけで、すぐにご利用いただけます。</p>
+
+<h2>主な機能</h2>
+
+<h3>ツイートURLからの動画ダウンロード</h3>
+<p>Twitter/Xのツイートページ（投稿ページ）のURLを入力するだけで、ツイートに含まれる動画を自動的に検出し、ダウンロードすることができます。面倒なAPI設定や認証は必要ありません。URLを貼り付けて「Load」ボタンをクリックするだけです。</p>
+
+<h3>画質選択機能</h3>
+<p>HLS形式の動画では、利用可能な画質（解像度）の一覧が表示され、お好みの画質を選択してダウンロードできます。高画質で保存したい場合も、データ通信量を節約したい場合も、ニーズに合わせた選択が可能です。</p>
+
+<h3>動画プレビュー</h3>
+<p>ダウンロード前に、ブラウザ上で動画をプレビュー再生できます。目的の動画かどうかを確認してからダウンロードできるため、間違いを防ぐことができます。</p>
+
+<h3>複数の動画ソースに対応</h3>
+<p>Twitter/Xのツイートページだけでなく、video.twimg.com（Twitter動画の直リンク）、video.twimg-image.cc、video.twimg-com.com、videy.vedio.ccなど、複数の動画ホスティングサービスに対応しています。</p>
+
+<h2>技術的な仕組み</h2>
+<p>Twitter Video Downloaderは、ユーザーのプライバシーと安全性を最優先に設計されています。</p>
+
+<h3>ブラウザ内処理</h3>
+<p>動画のダウンロードと変換処理は、可能な限りユーザーのブラウザ内で行われます。HLS形式の動画は、WebAssembly技術（ffmpeg.wasm）を使用して、ブラウザ内でMP4形式に変換されます。これにより、動画データが当サイトのサーバーを経由することなく、直接ユーザーのデバイスに保存されます。</p>
+
+<h3>サーバーにデータは保存されません</h3>
+<p>当サイトのサーバーは、動画データの保存を一切行いません。サーバーが行うのは、CORS制約を回避するためのプロキシ処理のみです。動画データはサーバーのメモリを一時的に通過するだけで、ディスクに書き込まれることはありません。</p>
+
+<h3>オープンな技術スタック</h3>
+<p>当サイトは、HTML、CSS、JavaScriptといった標準的なウェブ技術で構築されています。動画の再生にはHLS.jsライブラリを、ブラウザ内でのMP4変換にはffmpeg.wasmを使用しています。特別なプラグインやソフトウェアのインストールは必要ありません。</p>
+
+<h2>免責事項</h2>
+<p>当サイトは動画のダウンロードツールを提供するものであり、ダウンロードした動画の著作権は元の投稿者または権利者に帰属します。ユーザーは各国・地域の法律を遵守し、個人的な利用の範囲内でサービスをご利用ください。当サイトは、ユーザーによる動画の利用に関して一切の責任を負いません。</p>
+<p>詳しくは<a href="terms.html">利用規約</a>および<a href="privacy.html">プライバシーポリシー</a>をご確認ください。</p>
+
+<h2>お問い合わせ</h2>
+<p>当サイトに関するご質問、ご要望、不具合のご報告は、<a href="contact.html">お問い合わせページ</a>よりお気軽にご連絡ください。</p>
+
+<p class="last-updated">最終更新日: 2026年3月13日</p>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="components.js"></script>
+</body>
+</html>

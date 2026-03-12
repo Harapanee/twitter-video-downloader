@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="guide">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使い方ガイド - Twitter Video Downloader</title>
+<meta name="description" content="Twitter Video Downloaderの使い方を詳しく解説。URLのコピー方法から動画のダウンロードまで、ステップごとに説明します。">
+<meta property="og:title" content="使い方ガイド - Twitter Video Downloader">
+<meta property="og:description" content="Twitter動画のダウンロード方法をステップごとに解説します。">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ja_JP">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="page-container">
+<div class="content-card">
+
+<h1>使い方ガイド</h1>
+<p>Twitter Video Downloaderを使ってTwitter(X)の動画をダウンロードする方法を、ステップごとにわかりやすく解説します。</p>
+
+<h2>基本的な使い方</h2>
+
+<div class="guide-step">
+  <div class="step-number">1</div>
+  <div class="step-content">
+    <h3>動画のURLをコピーする</h3>
+    <p>Twitter（X）アプリまたはウェブサイトで、ダウンロードしたい動画が含まれるツイートを開きます。ツイートの共有ボタンをタップし、「リンクをコピー」を選択してURLをコピーします。</p>
+    <p><strong>パソコンの場合:</strong> ツイートの日時部分をクリックしてツイート単体ページを開き、ブラウザのアドレスバーからURLをコピーします。</p>
+    <p><strong>スマートフォンの場合:</strong> ツイートの右下にある共有アイコン（↗）をタップし、「リンクをコピー」を選択します。</p>
+    <p>コピーされるURLは以下のような形式です:</p>
+    <div class="code-block">https://x.com/username/status/1234567890123456789</div>
+  </div>
+</div>
+
+<div class="guide-step">
+  <div class="step-number">2</div>
+  <div class="step-content">
+    <h3>URLを入力して読み込む</h3>
+    <p><a href="index.html">Twitter Video Downloaderのホームページ</a>を開き、入力欄にコピーしたURLを貼り付けます。URLを貼り付けると自動的に動画の読み込みが開始されます。手動で行う場合は「Load」ボタンをクリックしてください。</p>
+    <p>読み込みが成功すると、動画のプレビューが表示されます。プレビュー再生で目的の動画かどうかを確認できます。</p>
+  </div>
+</div>
+
+<div class="guide-step">
+  <div class="step-number">3</div>
+  <div class="step-content">
+    <h3>画質を選択してダウンロード</h3>
+    <p>HLS形式の動画の場合、画質（解像度）を選択するドロップダウンが表示されます。お好みの画質を選択してください。一覧の上にある画質ほど高画質です。</p>
+    <p>「ダウンロード」ボタンをクリックすると、動画のダウンロードが開始されます。ダウンロードの進捗はプログレスバーで確認できます。ダウンロードが完了すると、MP4ファイルが自動的にデバイスに保存されます。</p>
+    <p>「新しいタブで開く」ボタンをクリックすると、動画を新しいブラウザタブで直接開くことができます。</p>
+  </div>
+</div>
+
+<h2>対応しているURL形式</h2>
+
+<h3>ツイートURL（推奨）</h3>
+<p>最も一般的な使い方です。動画が含まれるツイートのURLを入力すると、動画が自動的に検出されます。</p>
+<div class="code-block">https://x.com/username/status/1234567890123456789</div>
+<div class="code-block">https://twitter.com/username/status/1234567890123456789</div>
+
+<h3>動画直リンク（video.twimg.com）</h3>
+<p>Twitterの動画ファイルへの直接リンクです。MP4形式でそのままダウンロードされます。</p>
+<div class="code-block">https://video.twimg.com/ext_tw_video/...</div>
+
+<h3>ミラーサイトURL</h3>
+<p>以下のミラーサイトのURLにも対応しています。HLS形式の動画は自動的にMP4に変換されます。</p>
+<ul>
+  <li>video.twimg-image.cc</li>
+  <li>video.twimg-com.com</li>
+  <li>videy.vedio.cc</li>
+</ul>
+
+<h2>HLSとMP4の違い</h2>
+
+<h3>MP4形式</h3>
+<p>MP4は最も一般的な動画ファイル形式です。ほぼすべてのデバイスやプレーヤーで再生できます。Twitterの動画直リンク（video.twimg.com）からダウンロードした場合は、そのままMP4形式で保存されます。</p>
+
+<h3>HLS形式</h3>
+<p>HLS（HTTP Live Streaming）は、動画をストリーミング配信するための技術です。動画が細かいセグメント（断片）に分割されており、複数の画質レベルが提供されます。ミラーサイト経由の動画はHLS形式で提供されることが多く、当サイトでは自動的にセグメントを結合してMP4形式に変換します。</p>
+<p>HLSからMP4への変換は、ブラウザ内でWebAssembly技術（ffmpeg.wasm）を使用して行われます。初回の変換時にはエンジンの読み込みに少し時間がかかりますが、2回目以降はスムーズに変換されます。</p>
+
+<h2>トラブルシューティング</h2>
+
+<h3>「動画の読み込みに失敗しました」と表示される</h3>
+<ul>
+  <li>URLが正しいか確認してください</li>
+  <li>ツイートが削除されていないか確認してください</li>
+  <li>非公開アカウントのツイートはダウンロードできません</li>
+  <li>しばらく時間をおいてから再度お試しください</li>
+</ul>
+
+<h3>ダウンロードが途中で止まる</h3>
+<ul>
+  <li>安定したインターネット接続を確認してください</li>
+  <li>大容量の動画の場合、ダウンロードに時間がかかることがあります</li>
+  <li>ブラウザのタブを閉じずにお待ちください</li>
+</ul>
+
+<h3>MP4変換に失敗する</h3>
+<ul>
+  <li>ブラウザのメモリ不足の可能性があります。他のタブを閉じてお試しください</li>
+  <li>変換に失敗した場合、自動的に.ts形式でダウンロードされます</li>
+  <li>.tsファイルはVLCメディアプレーヤー等で再生できます</li>
+</ul>
+
+<h3>スマートフォンでダウンロードできない</h3>
+<ul>
+  <li>iOS（iPhone/iPad）の場合、Safariブラウザを使用してください</li>
+  <li>Androidの場合、Chromeブラウザを推奨します</li>
+  <li>ダウンロードしたファイルは「ファイル」アプリまたは「ダウンロード」フォルダから確認できます</li>
+</ul>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="components.js"></script>
+</body>
+</html>
