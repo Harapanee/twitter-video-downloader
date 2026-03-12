@@ -405,7 +405,7 @@ body::after {
 
   <div id="downloadTab">
     <div class="input-group">
-      <input type="text" id="urlInput" class="url-input" placeholder="https://video.twimg-image.cc/... videy.vedio.cc/..." spellcheck="false" autocomplete="off">
+      <input type="text" id="urlInput" class="url-input" placeholder="https://x.com/user/status/... or video URL" spellcheck="false" autocomplete="off">
       <button id="loadBtn" class="btn btn-load">Load</button>
     </div>
 
@@ -445,6 +445,11 @@ body::after {
     <details class="supported-urls">
       <summary>対応しているURL一覧</summary>
       <div class="supported-urls-content">
+        <div class="url-type">
+          <span class="url-host">x.com / twitter.com</span>
+          <span class="url-desc">ツイートURL (動画付きツイートから自動で動画を抽出)</span>
+          <code class="url-example">https://x.com/user/status/123456789...</code>
+        </div>
         <div class="url-type">
           <span class="url-host">video.twimg.com</span>
           <span class="url-desc">Twitter/X の動画直リンク (MP4形式でそのままダウンロード)</span>
@@ -492,6 +497,7 @@ body::after {
   let isDownloading = false;
 
   const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'videy.vedio.cc'];
+  const TWEET_HOSTS = ['x.com', 'twitter.com', 'mobile.twitter.com'];
 
   // Proxy detection: available on both localhost (server.py) and Vercel (/api/proxy via rewrite)
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
@@ -544,13 +550,19 @@ body::after {
   function validateUrl(raw) {
     let url = raw.trim();
     if (!url) return { valid: false, error: 'URLを入力してください' };
-    for (const host of ALLOWED_HOSTS) {
+    for (const host of [...ALLOWED_HOSTS, ...TWEET_HOSTS]) {
       if (url.startsWith(host)) { url = 'https://' + url; break; }
     }
     try {
       const parsed = new URL(url);
+      if (TWEET_HOSTS.includes(parsed.hostname)) {
+        // Validate tweet URL format: /{user}/status/{id}
+        const match = parsed.pathname.match(/^\/([^/]+)\/status\/(\d+)/);
+        if (!match) return { valid: false, error: 'ツイートURLの形式が正しくありません (例: https://x.com/user/status/123...)' };
+        return { valid: true, url: parsed.href, host: parsed.hostname, isTweet: true, tweetUser: match[1], tweetId: match[2] };
+      }
       if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
-        return { valid: false, error: '対応サイト: video.twimg.com / video.twimg-image.cc / videy.vedio.cc' };
+        return { valid: false, error: '対応サイト: x.com / twitter.com / video.twimg.com / video.twimg-image.cc / videy.vedio.cc' };
       }
       return { valid: true, url: parsed.href, host: parsed.hostname };
     } catch {
@@ -729,6 +741,52 @@ body::after {
     return segments;
   }
 
+  // --- Extract video from tweet URL via fxtwitter API ---
+  async function extractVideoFromTweet(user, tweetId) {
+    const apiUrl = `https://api.fxtwitter.com/${user}/status/${tweetId}`;
+
+    let data;
+    // Try direct fetch first (fxtwitter supports CORS)
+    try {
+      const resp = await fetch(apiUrl);
+      if (resp.ok) data = await resp.json();
+    } catch {}
+
+    // Fallback to proxy
+    if (!data && localProxyBase) {
+      try {
+        const resp = await fetch(localProxyBase + encodeURIComponent(apiUrl));
+        if (resp.ok) data = await resp.json();
+      } catch {}
+    }
+
+    if (!data) throw new Error('ツイート情報の取得に失敗しました');
+    if (data.code !== 200 || !data.tweet) throw new Error('ツイートが見つかりません');
+
+    const tweet = data.tweet;
+
+    // Check for video in media
+    if (tweet.media && tweet.media.videos && tweet.media.videos.length > 0) {
+      const video = tweet.media.videos[0];
+      return {
+        url: video.url,
+        type: 'direct',
+        name: `${user}_${tweetId}`,
+      };
+    }
+
+    // Check for media.all (some tweets have media in different format)
+    if (tweet.media && tweet.media.all) {
+      for (const m of tweet.media.all) {
+        if (m.type === 'video' || m.type === 'gif') {
+          if (m.url) return { url: m.url, type: 'direct', name: `${user}_${tweetId}` };
+        }
+      }
+    }
+
+    throw new Error('このツイートには動画が含まれていません');
+  }
+
   // --- Load video ---
   async function loadVideo() {
     clearError();
@@ -747,7 +805,11 @@ body::after {
     setLoading(true);
 
     try {
-      if (result.host === 'video.twimg-image.cc' || result.host === 'videy.vedio.cc') {
+      if (result.isTweet) {
+        const videoInfo = await extractVideoFromTweet(result.tweetUser, result.tweetId);
+        currentUrl = videoInfo.url;
+        await loadDirectVideo(videoInfo.url);
+      } else if (result.host === 'video.twimg-image.cc' || result.host === 'videy.vedio.cc') {
         await loadTwimgImageVideo(result.url);
       } else {
         await loadDirectVideo(result.url);
@@ -1040,7 +1102,7 @@ body::after {
   urlInput.addEventListener('paste', () => {
     setTimeout(() => {
       const val = urlInput.value.trim();
-      if (ALLOWED_HOSTS.some(h => val.includes(h))) loadVideo();
+      if ([...ALLOWED_HOSTS, ...TWEET_HOSTS].some(h => val.includes(h))) loadVideo();
     }, 50);
   });
   urlInput.addEventListener('input', clearError);

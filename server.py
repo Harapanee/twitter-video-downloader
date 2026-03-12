@@ -33,7 +33,8 @@ ALLOWED_HOSTS_RE = re.compile(
     r'|[a-z0-9-]+\.twimg\.com'
     r'|[a-z0-9-]+\.akamaized\.net'
     r'|[a-z0-9-]+\.fun800\.click'
-    r'|[a-z0-9-]+\.fun800\.cc)$'
+    r'|[a-z0-9-]+\.fun800\.cc'
+    r'|api\.fxtwitter\.com)$'
 )
 
 USER_AGENT = (
