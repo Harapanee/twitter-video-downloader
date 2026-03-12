@@ -522,7 +522,17 @@
       : 'Twitter動画URLから動画を保存';
   }
 
+  const CORS_OPEN_HOSTS = ['fun800.click', 'fun800.cc'];
+
+  function isCorsOpen(url) {
+    try {
+      const hostname = new URL(url).hostname;
+      return CORS_OPEN_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h));
+    } catch { return false; }
+  }
+
   function proxyFetch(url) {
+    if (isCorsOpen(url)) return fetch(url);
     if (localProxyBase) {
       return fetch(localProxyBase + encodeURIComponent(url));
     }
@@ -535,6 +545,12 @@
   ];
 
   async function fetchWithProxy(url) {
+    if (isCorsOpen(url)) {
+      try {
+        const r = await fetch(url);
+        if (r.ok) return r;
+      } catch (e) { console.debug('[proxy] direct fetch (CORS open) failed:', e); }
+    }
     if (localProxyBase) {
       try {
         const r = await fetch(localProxyBase + encodeURIComponent(url));
@@ -855,7 +871,8 @@
 
     if (Hls.isSupported()) {
       const hlsConfig = {};
-      if (localProxyBase) {
+      const hlsNeedsProxy = localProxyBase && !isCorsOpen(hlsData.playlistUrl);
+      if (hlsNeedsProxy) {
         hlsConfig.enableWorker = false;
         hlsConfig.xhrSetup = (xhr, url) => {
           if (!url.includes('/proxy?url=')) {
