@@ -22,10 +22,13 @@ import sys
 import tempfile
 from functools import partial
 
+import requests
+from requests.adapters import HTTPAdapter
+
 PORT = 8888
 BIND = '127.0.0.1'
 CHUNK_SIZE = 262144
-MAX_WORKERS = 6
+MAX_WORKERS = 10
 
 # Allowed hostname patterns
 ALLOWED_HOSTS_RE = re.compile(
@@ -46,6 +49,19 @@ USER_AGENT = (
     'AppleWebKit/537.36 (KHTML, like Gecko) '
     'Chrome/120.0.0.0 Safari/537.36'
 )
+
+
+def _make_session():
+    """Create a requests.Session with connection pooling."""
+    s = requests.Session()
+    adapter = HTTPAdapter(pool_connections=MAX_WORKERS, pool_maxsize=MAX_WORKERS)
+    s.mount('https://', adapter)
+    s.mount('http://', adapter)
+    s.headers.update({'User-Agent': USER_AGENT, 'Accept': '*/*'})
+    return s
+
+# Shared session for proxy requests (reuses TCP/TLS connections)
+_proxy_session = _make_session()
 
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
@@ -99,17 +115,17 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(403, f'Host not allowed: {hostname}')
             return
 
-        # Fetch the target URL
-        req = urllib.request.Request(target_url, headers={
-            'User-Agent': USER_AGENT,
-            'Accept': '*/*',
-            'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/',
-        })
-
+        # Fetch the target URL with connection-pooled session
         try:
-            resp = urllib.request.urlopen(req, timeout=30)
-        except urllib.error.HTTPError as e:
-            self.send_error(e.code, str(e.reason))
+            resp = _proxy_session.get(
+                target_url,
+                headers={'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/'},
+                timeout=30,
+                stream=True,
+            )
+            resp.raise_for_status()
+        except requests.HTTPError as e:
+            self.send_error(e.response.status_code if e.response else 502, str(e))
             return
         except Exception as e:
             self.send_error(502, f'Upstream error: {e}')
@@ -122,8 +138,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         if is_m3u8:
             # Rewrite relative URLs in m3u8 playlists to absolute URLs
             # so HLS.js resolves them correctly through the proxy
-            body = resp.read()
-            resp.close()
+            body = resp.content
             base_url = target_url.rsplit('/', 1)[0] + '/'
             text = body.decode('utf-8')
             lines = text.split('\n')
@@ -154,15 +169,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
             # Stream response body in chunks
             try:
-                while True:
-                    chunk = resp.read(CHUNK_SIZE)
-                    if not chunk:
-                        break
+                for chunk in resp.iter_content(chunk_size=CHUNK_SIZE):
                     self.wfile.write(chunk)
             except (BrokenPipeError, ConnectionResetError):
                 pass
-            finally:
-                resp.close()
 
     def _handle_convert(self):
         """Receive TS segment URLs as JSON, download them, convert to MP4 with ffmpeg."""
@@ -197,26 +207,33 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
         tmpdir = tempfile.mkdtemp(prefix='tvdl_')
         try:
-            # Download all TS segments in parallel
+            # Download all TS segments in parallel with connection reuse
+            session = requests.Session()
+            adapter = HTTPAdapter(
+                pool_connections=MAX_WORKERS,
+                pool_maxsize=MAX_WORKERS,
+            )
+            session.mount('https://', adapter)
+            session.mount('http://', adapter)
+            session.headers.update({
+                'User-Agent': USER_AGENT,
+                'Accept': '*/*',
+            })
+
             def _download_segment(args):
                 i, url = args
                 ts_path = os.path.join(tmpdir, f'seg{i:04d}.ts')
-                req = urllib.request.Request(url, headers={
-                    'User-Agent': USER_AGENT,
-                    'Accept': '*/*',
-                })
-                resp = urllib.request.urlopen(req, timeout=30)
+                resp = session.get(url, timeout=30, stream=True)
+                resp.raise_for_status()
                 with open(ts_path, 'wb') as f:
-                    while True:
-                        chunk = resp.read(CHUNK_SIZE)
-                        if not chunk:
-                            break
+                    for chunk in resp.iter_content(chunk_size=CHUNK_SIZE):
                         f.write(chunk)
-                resp.close()
                 return ts_path
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
                 ts_files = list(pool.map(_download_segment, enumerate(segment_urls)))
+
+            session.close()
 
             # Create concat file for ffmpeg
             concat_path = os.path.join(tmpdir, 'concat.txt')
@@ -254,8 +271,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                         break
                     self.wfile.write(chunk)
 
-        except urllib.error.HTTPError as e:
-            self.send_error(e.code, str(e.reason))
+        except requests.HTTPError as e:
+            self.send_error(e.response.status_code if e.response else 502, str(e))
         except Exception as e:
             self.send_error(502, f'Convert error: {e}')
         finally:

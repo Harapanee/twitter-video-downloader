@@ -1023,7 +1023,7 @@ body::after {
     const segmentBuffers = new Array(segments.length);
     let downloaded = 0;
     let completedCount = 0;
-    const MAX_CONCURRENT = 6;
+    const MAX_CONCURRENT = 10;
 
     async function downloadSegment(index) {
       const resp = await proxyFetch(segments[index].url);
