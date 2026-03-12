@@ -756,7 +756,38 @@ body::after {
     }
   }
 
-  // --- Download HLS (fetch segments → concatenate → save as TS) ---
+  // --- ffmpeg.wasm: client-side TS → MP4 conversion ---
+  let ffmpegInstance = null;
+
+  async function getFFmpeg() {
+    if (ffmpegInstance) return ffmpegInstance;
+
+    const { FFmpeg } = await import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10');
+    const { toBlobURL } = await import('https://esm.sh/@ffmpeg/util@0.12.1');
+
+    const ffmpeg = new FFmpeg();
+    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+
+    ffmpegInstance = ffmpeg;
+    return ffmpeg;
+  }
+
+  async function convertTsToMp4(tsData) {
+    const ffmpeg = await getFFmpeg();
+    await ffmpeg.writeFile('input.ts', tsData);
+    await ffmpeg.exec(['-i', 'input.ts', '-c', 'copy', '-movflags', '+faststart', 'output.mp4']);
+    const mp4Data = await ffmpeg.readFile('output.mp4');
+    await ffmpeg.deleteFile('input.ts');
+    await ffmpeg.deleteFile('output.mp4');
+    return new Blob([mp4Data.buffer], { type: 'video/mp4' });
+  }
+
+  // --- Download HLS (fetch segments → convert to MP4) ---
   async function downloadHls() {
     const selectedPath = qualitySelect.value;
     const segments = await parseSegmentPlaylist(hlsData.baseUrl, selectedPath);
@@ -764,10 +795,10 @@ body::after {
     if (segments.length === 0) throw new Error('セグメントが見つかりません');
 
     const quality = qualitySelect.selectedOptions[0]?.textContent.split(' ')[0] || '';
+    const filename = hlsData.name + '_' + quality + '.mp4';
 
-    // Use server-side ffmpeg conversion if running on localhost (produces .mp4)
+    // Use server-side ffmpeg conversion if running on localhost
     if (useServerConvert) {
-      const filename = hlsData.name + '_' + quality + '.mp4';
       showProgress();
       updateProgress(20, 'サーバーで変換中...');
 
@@ -789,8 +820,7 @@ body::after {
       return;
     }
 
-    // Client-side: download segments and concatenate as TS
-    const filename = hlsData.name + '_' + quality + '.ts';
+    // Client-side: download segments then convert with ffmpeg.wasm
     showProgress();
     const segmentBuffers = [];
     let downloaded = 0;
@@ -802,14 +832,34 @@ body::after {
       segmentBuffers.push(new Uint8Array(buf));
       downloaded += buf.byteLength;
 
-      const pct = Math.round(((i + 1) / segments.length) * 100);
+      const pct = Math.round(((i + 1) / segments.length) * 80);
       const mb = (downloaded / 1048576).toFixed(1);
-      updateProgress(pct, `セグメント ${i + 1}/${segments.length} (${mb} MB) ${pct}%`);
+      updateProgress(pct, `セグメント ${i + 1}/${segments.length} (${mb} MB)`);
     }
 
-    updateProgress(100, 'ダウンロード完了');
-    const tsBlob = new Blob(segmentBuffers, { type: 'video/mp2t' });
-    triggerDownload(tsBlob, filename);
+    // Concatenate all TS segments
+    let totalLen = 0;
+    for (const buf of segmentBuffers) totalLen += buf.byteLength;
+    const tsData = new Uint8Array(totalLen);
+    let pos = 0;
+    for (const buf of segmentBuffers) {
+      tsData.set(buf, pos);
+      pos += buf.byteLength;
+    }
+
+    // Convert TS → MP4 with ffmpeg.wasm
+    updateProgress(85, !ffmpegInstance ? 'MP4変換エンジンを読み込み中... (初回のみ)' : 'MP4に変換中...');
+    try {
+      const mp4Blob = await convertTsToMp4(tsData);
+      updateProgress(100, 'ダウンロード完了');
+      triggerDownload(mp4Blob, filename);
+    } catch (e) {
+      console.warn('MP4 conversion failed, falling back to .ts:', e);
+      showInfo('MP4変換に失敗したため .ts 形式でダウンロードします');
+      updateProgress(100, 'ダウンロード完了 (.ts)');
+      const tsFilename = hlsData.name + '_' + quality + '.ts';
+      triggerDownload(new Blob([tsData], { type: 'video/mp2t' }), tsFilename);
+    }
   }
 
   // --- Download direct video ---
