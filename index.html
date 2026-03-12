@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Twitter Video Downloader</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/mux.js@7.0.3/dist/mux.min.js"></script>
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0a0f;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -40%;
+  left: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(ellipse, rgba(102, 126, 234, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -40%;
+  right: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(ellipse, rgba(118, 75, 162, 0.10) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 24px;
+  padding: 40px 32px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  animation: fadeInUp 0.6s ease-out;
+  transition: max-width 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.shake { animation: shake 0.4s ease-out; }
+
+.title {
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  text-align: center;
+  margin-bottom: 28px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.input-group {
+  display: flex;
+  gap: 10px;
+}
+
+.url-input {
+  flex: 1;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.url-input::placeholder { color: rgba(255, 255, 255, 0.25); }
+
+.url-input:focus {
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+}
+
+.url-input.error {
+  border-color: rgba(234, 102, 102, 0.6);
+  box-shadow: 0 0 0 3px rgba(234, 102, 102, 0.12);
+}
+
+.btn {
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-load {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.btn-load:hover:not(:disabled) {
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.35);
+}
+
+.error-msg {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(234, 102, 102, 0.1);
+  border: 1px solid rgba(234, 102, 102, 0.2);
+  border-radius: 10px;
+  color: #ea6666;
+  font-size: 0.85rem;
+  display: none;
+}
+
+.error-msg.visible { display: block; }
+
+.video-area {
+  margin-top: 24px;
+  display: none;
+}
+
+.video-area.visible { display: block; }
+
+.video-wrapper {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.video-wrapper video {
+  display: block;
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  background: #000;
+}
+
+.quality-select {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quality-select label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.quality-select select {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.quality-select select option {
+  background: #1a1a2e;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.btn-download {
+  flex: 1;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-download:hover:not(:disabled) {
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.35);
+}
+
+.btn-newtab {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-newtab:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.progress-container {
+  margin-top: 12px;
+  display: none;
+}
+
+.progress-container.visible { display: block; }
+
+.progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 3px;
+  transition: width 0.2s;
+}
+
+.progress-text {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.info-msg {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 10px;
+  color: rgba(180, 195, 255, 0.9);
+  font-size: 0.85rem;
+  display: none;
+}
+
+.info-msg.visible { display: block; }
+
+.footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+
+@media (max-width: 480px) {
+  .card { padding: 28px 20px; margin: 16px; }
+  .input-group { flex-direction: column; }
+  .actions { flex-direction: column; }
+  .title { font-size: 1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+  <h1 class="title">Twitter Video Downloader</h1>
+  <p class="subtitle" id="subtitleText">Twitter動画URLから動画を保存</p>
+
+  <div id="downloadTab">
+    <div class="input-group">
+      <input type="text" id="urlInput" class="url-input" placeholder="https://video.twimg-image.cc/... videy.vedio.cc/..." spellcheck="false" autocomplete="off">
+      <button id="loadBtn" class="btn btn-load">Load</button>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div id="videoArea" class="video-area">
+      <div class="video-wrapper">
+        <video id="videoPlayer" controls playsinline preload="metadata"></video>
+      </div>
+
+      <div id="qualityArea" class="quality-select" style="display:none">
+        <label>画質:</label>
+        <select id="qualitySelect"></select>
+      </div>
+
+      <div id="progressContainer" class="progress-container">
+        <div class="progress-bar-bg">
+          <div id="progressFill" class="progress-bar-fill"></div>
+        </div>
+        <div id="progressText" class="progress-text"></div>
+      </div>
+
+      <div id="infoMsg" class="info-msg"></div>
+
+      <div class="actions">
+        <button id="downloadBtn" class="btn btn-download">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          ダウンロード
+        </button>
+        <button id="newtabBtn" class="btn btn-newtab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          新しいタブで開く
+        </button>
+      </div>
+    </div>
+
+    <div class="footer">動画URLを入力して Load をクリック</div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const urlInput = document.getElementById('urlInput');
+  const loadBtn = document.getElementById('loadBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const videoArea = document.getElementById('videoArea');
+  const videoPlayer = document.getElementById('videoPlayer');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const newtabBtn = document.getElementById('newtabBtn');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const infoMsg = document.getElementById('infoMsg');
+  const qualityArea = document.getElementById('qualityArea');
+  const qualitySelect = document.getElementById('qualitySelect');
+
+  let currentUrl = '';       // original URL input
+  let currentDirectUrl = ''; // direct video URL (for video.twimg.com)
+  let hlsData = null;        // { baseUrl, qualities: [{name, path}], name }
+  let hlsInstance = null;
+  let isDownloading = false;
+
+  const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'videy.vedio.cc'];
+
+  // Local proxy detection
+  const useLocalProxy = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const localProxyBase = useLocalProxy ? location.origin + '/proxy?url=' : null;
+
+  // Show proxy status in subtitle
+  const subtitleText = document.getElementById('subtitleText');
+  if (useLocalProxy) {
+    subtitleText.textContent = 'Twitter動画URLから動画を保存 (Local Proxy)';
+  }
+
+  function proxyFetch(url) {
+    if (localProxyBase) {
+      return fetch(localProxyBase + encodeURIComponent(url));
+    }
+    return fetch(url);
+  }
+
+  const CORS_PROXIES = [
+    (url) => 'https://corsproxy.io/?' + encodeURIComponent(url),
+    (url) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+  ];
+
+  async function fetchWithProxy(url) {
+    // Try local proxy first (most reliable)
+    if (localProxyBase) {
+      try {
+        const r = await fetch(localProxyBase + encodeURIComponent(url));
+        if (r.ok) return r;
+      } catch {}
+    }
+    try {
+      const r = await fetch(url);
+      if (r.ok) return r;
+    } catch {}
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const r = await fetch(proxy(url));
+        if (r.ok) return r;
+      } catch {}
+    }
+    throw new Error('All fetch attempts failed');
+  }
+
+  // --- Validation ---
+  function validateUrl(raw) {
+    let url = raw.trim();
+    if (!url) return { valid: false, error: 'URLを入力してください' };
+    for (const host of ALLOWED_HOSTS) {
+      if (url.startsWith(host)) { url = 'https://' + url; break; }
+    }
+    try {
+      const parsed = new URL(url);
+      if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+        return { valid: false, error: '対応サイト: video.twimg.com / video.twimg-image.cc / videy.vedio.cc' };
+      }
+      return { valid: true, url: parsed.href, host: parsed.hostname };
+    } catch {
+      return { valid: false, error: '有効なURLを入力してください' };
+    }
+  }
+
+  // --- UI helpers ---
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('visible');
+    urlInput.classList.add('error');
+    urlInput.parentElement.classList.add('shake');
+    setTimeout(() => urlInput.parentElement.classList.remove('shake'), 400);
+  }
+
+  function clearError() {
+    errorMsg.classList.remove('visible');
+    urlInput.classList.remove('error');
+  }
+
+  function showInfo(msg) { infoMsg.textContent = msg; infoMsg.classList.add('visible'); }
+  function clearInfo() { infoMsg.classList.remove('visible'); }
+
+  function showProgress() {
+    progressContainer.classList.add('visible');
+    progressFill.style.width = '0%';
+    progressText.textContent = '';
+  }
+
+  function updateProgress(pct, text) {
+    progressFill.style.width = pct + '%';
+    progressText.textContent = text || '';
+  }
+
+  function hideProgress() { progressContainer.classList.remove('visible'); }
+
+  const DL_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+  function setDownloading(state) {
+    isDownloading = state;
+    downloadBtn.disabled = state;
+    downloadBtn.innerHTML = state
+      ? '<span class="spinner"></span> ダウンロード中...'
+      : DL_ICON + ' ダウンロード';
+  }
+
+  function setLoading(state) {
+    loadBtn.disabled = state;
+    loadBtn.textContent = state ? '読み込み中...' : 'Load';
+  }
+
+  // --- Fetch page HTML via CORS proxy (with retries) ---
+  async function fetchPageHtml(url) {
+    // Try local proxy first
+    if (localProxyBase) {
+      try {
+        const resp = await fetch(localProxyBase + encodeURIComponent(url));
+        if (resp.ok) {
+          const text = await resp.text();
+          if (text && text.includes('<')) return text;
+        }
+      } catch {}
+    }
+
+    const proxies = [
+      { build: (u) => 'https://corsproxy.io/?' + encodeURIComponent(u), json: false },
+      { build: (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), json: true, field: 'contents' },
+      { build: (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u), json: false },
+      { build: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), json: false },
+    ];
+
+    for (const proxy of proxies) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const resp = await fetch(proxy.build(url));
+          if (!resp.ok) continue;
+          if (proxy.json) {
+            const j = await resp.json();
+            const html = j[proxy.field];
+            if (html && html.includes('<')) return html;
+          } else {
+            const text = await resp.text();
+            if (text && text.includes('<')) return text;
+          }
+        } catch {}
+      }
+    }
+
+    throw new Error('ページの取得に失敗しました。しばらく待ってから再試行してください。\nヒント: python3 server.py でローカルサーバーを起動し http://localhost:8888 を開いてください');
+  }
+
+  // --- Parse video.twimg-image.cc page ---
+  async function parseTwimgImagePage(url) {
+    const html = await fetchPageHtml(url);
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const nuxtScript = doc.getElementById('__NUXT_DATA__');
+    if (!nuxtScript) throw new Error('動画データが見つかりません');
+
+    const data = JSON.parse(nuxtScript.textContent);
+
+    // Find HLS playlist URL and direct MP4 URL from NUXT data
+    let playlistUrl = null;
+    let directMp4Url = null;
+    let videoName = null;
+    for (const item of data) {
+      if (typeof item === 'string') {
+        if (item.endsWith('/playlist.m3u8')) playlistUrl = item;
+        if (!directMp4Url && item.match(/^https?:\/\/.*\.mp4$/)) directMp4Url = item;
+        if (!videoName && !item.startsWith('http') && !item.includes('/') && !item.includes('.') && item.length > 1 && item.length < 50) {
+          videoName = item;
+        }
+      }
+    }
+
+    if (!playlistUrl && !directMp4Url) throw new Error('動画データが見つかりません');
+
+    // Parse master playlist to get quality levels
+    const plResp = await proxyFetch(playlistUrl);
+    const plText = await plResp.text();
+    const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
+
+    const baseUrl = playlistUrl.replace(/\/[^/]*$/, '/');
+    const qualities = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
+        const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
+        const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
+        const path = lines[i + 1];
+        if (path && !path.startsWith('#')) {
+          qualities.push({
+            name: resMatch ? resMatch[1] : 'Unknown',
+            bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0,
+            path: path,
+          });
+        }
+      }
+    }
+
+    // Sort by bandwidth descending (highest quality first)
+    qualities.sort((a, b) => b.bandwidth - a.bandwidth);
+
+    return {
+      playlistUrl,
+      baseUrl,
+      qualities,
+      directMp4Url,
+      name: videoName || 'twitter_video',
+    };
+  }
+
+  // --- Parse segment playlist ---
+  async function parseSegmentPlaylist(baseUrl, qualityPath) {
+    const url = qualityPath.startsWith('http') ? qualityPath : baseUrl + qualityPath;
+    const resp = await proxyFetch(url);
+    const text = await resp.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const segmentBase = url.replace(/\/[^/]*$/, '/');
+    const segments = [];
+    let currentDuration = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('#EXTINF:')) {
+        currentDuration = parseFloat(line.replace('#EXTINF:', '').split(',')[0]) || 0;
+      } else if (!line.startsWith('#')) {
+        const segUrl = line.startsWith('http') ? line : segmentBase + line;
+        segments.push({ url: segUrl, duration: currentDuration });
+        currentDuration = 0;
+      }
+    }
+
+    return segments;
+  }
+
+  // --- Load video ---
+  async function loadVideo() {
+    clearError();
+    clearInfo();
+    hideProgress();
+    hlsData = null;
+    currentDirectUrl = '';
+    qualityArea.style.display = 'none';
+
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+    const result = validateUrl(urlInput.value);
+    if (!result.valid) { showError(result.error); return; }
+
+    currentUrl = result.url;
+    setLoading(true);
+
+    try {
+      if (result.host === 'video.twimg-image.cc' || result.host === 'videy.vedio.cc') {
+        await loadTwimgImageVideo(result.url);
+      } else {
+        await loadDirectVideo(result.url);
+      }
+    } catch (e) {
+      showError(e.message || '動画の読み込みに失敗しました');
+      videoArea.classList.remove('visible');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- Load video.twimg-image.cc ---
+  async function loadTwimgImageVideo(url) {
+    hlsData = await parseTwimgImagePage(url);
+
+    if (hlsData.qualities.length === 0) throw new Error('動画の画質情報が見つかりません');
+
+    // Populate quality selector
+    qualitySelect.innerHTML = '';
+    for (const q of hlsData.qualities) {
+      const opt = document.createElement('option');
+      opt.value = q.path;
+      opt.textContent = q.name + (q.bandwidth ? ` (${Math.round(q.bandwidth / 1000)}kbps)` : '');
+      qualitySelect.appendChild(opt);
+    }
+    qualityArea.style.display = 'flex';
+
+    // Play with HLS.js
+    videoArea.classList.add('visible');
+
+    if (Hls.isSupported()) {
+      const hlsConfig = {};
+      if (localProxyBase) {
+        // Force XHR loader (disable fetch) and rewrite URLs through local proxy
+        hlsConfig.enableWorker = false;
+        hlsConfig.xhrSetup = (xhr, url) => {
+          // Avoid double-proxying: only rewrite if not already a proxy URL
+          if (!url.includes('/proxy?url=')) {
+            xhr.open('GET', localProxyBase + encodeURIComponent(url), true);
+          }
+        };
+      }
+      hlsInstance = new Hls(hlsConfig);
+      hlsInstance.loadSource(hlsData.playlistUrl);
+      hlsInstance.attachMedia(videoPlayer);
+      hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) showError('HLS再生エラー: ' + data.type);
+      });
+    } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      videoPlayer.src = hlsData.playlistUrl;
+    } else {
+      throw new Error('このブラウザはHLS再生に対応していません');
+    }
+  }
+
+  // --- Load video.twimg.com (direct video) ---
+  async function loadDirectVideo(url) {
+    currentDirectUrl = url;
+
+    // Try direct src first
+    const ok = await new Promise((resolve) => {
+      videoPlayer.src = url;
+      videoArea.classList.add('visible');
+      videoPlayer.onloadedmetadata = () => resolve(true);
+      videoPlayer.onerror = () => resolve(false);
+      setTimeout(() => resolve(false), 6000);
+    });
+
+    if (ok) return;
+
+    // Try via CORS proxy
+    try {
+      const response = await fetchWithProxy(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      videoPlayer.src = blobUrl;
+      videoArea.classList.add('visible');
+      currentDirectUrl = blobUrl;
+    } catch {
+      throw new Error('動画の読み込みに失敗しました。URLが期限切れまたは無効な可能性があります');
+    }
+  }
+
+  // --- Download handler ---
+  async function handleDownload() {
+    if (isDownloading) return;
+
+    clearError();
+    clearInfo();
+    hideProgress();
+    setDownloading(true);
+
+    try {
+      if (hlsData) {
+        await downloadHls();
+      } else if (currentDirectUrl) {
+        await downloadDirect();
+      }
+    } catch (e) {
+      hideProgress();
+      showError('ダウンロードに失敗しました: ' + (e.message || '不明なエラー'));
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  // --- Download HLS (fetch segments → transmux → save as MP4) ---
+  // --- Transmux TS segments → MP4 using mux.js Transmuxer ---
+  async function transmuxTsToMp4(segmentBuffers) {
+    // Concatenate all TS data into one buffer
+    let totalLen = 0;
+    for (const buf of segmentBuffers) totalLen += buf.byteLength;
+    const allTs = new Uint8Array(totalLen);
+    let pos = 0;
+    for (const buf of segmentBuffers) {
+      allTs.set(new Uint8Array(buf), pos);
+      pos += buf.byteLength;
+    }
+
+    const transmuxer = new muxjs.mp4.Transmuxer();
+
+    return new Promise((resolve, reject) => {
+      let initSegment = null;
+      const dataChunks = [];
+      let dataLength = 0;
+
+      transmuxer.on('data', (segment) => {
+        if (!initSegment) {
+          initSegment = new Uint8Array(segment.initSegment);
+        }
+        dataChunks.push(new Uint8Array(segment.data));
+        dataLength += segment.data.byteLength;
+      });
+
+      transmuxer.on('done', () => {
+        if (!initSegment) { reject(new Error('変換に失敗しました')); return; }
+        const mp4 = new Uint8Array(initSegment.byteLength + dataLength);
+        mp4.set(initSegment, 0);
+        let offset = initSegment.byteLength;
+        for (const chunk of dataChunks) {
+          mp4.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+        resolve(new Blob([mp4], { type: 'video/mp4' }));
+      });
+
+      // Push all data at once, then flush once
+      transmuxer.push(allTs);
+      transmuxer.flush();
+    });
+  }
+
+  async function downloadHls() {
+    const selectedPath = qualitySelect.value;
+    const segments = await parseSegmentPlaylist(hlsData.baseUrl, selectedPath);
+
+    if (segments.length === 0) throw new Error('セグメントが見つかりません');
+
+    const quality = qualitySelect.selectedOptions[0]?.textContent.split(' ')[0] || '';
+    const filename = hlsData.name + '_' + quality + '.mp4';
+
+    // Use server-side ffmpeg conversion if local proxy is available
+    if (localProxyBase) {
+      showProgress();
+      updateProgress(20, 'サーバーで変換中...');
+
+      const resp = await fetch('/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments: segments.map(s => s.url) }),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error('サーバー変換に失敗: ' + errText);
+      }
+
+      updateProgress(90, 'ダウンロード中...');
+      const blob = await resp.blob();
+      updateProgress(100, 'ダウンロード完了');
+      triggerDownload(blob, filename);
+      return;
+    }
+
+    // Fallback: client-side download segments and transmux with mux.js
+    showProgress();
+    const segmentBuffers = [];
+    let downloaded = 0;
+
+    for (let i = 0; i < segments.length; i++) {
+      const resp = await proxyFetch(segments[i].url);
+      if (!resp.ok) throw new Error(`セグメント ${i + 1} のダウンロードに失敗`);
+      const buf = await resp.arrayBuffer();
+      segmentBuffers.push(new Uint8Array(buf));
+      downloaded += buf.byteLength;
+
+      const pct = Math.round(((i + 1) / segments.length) * 90);
+      const mb = (downloaded / 1048576).toFixed(1);
+      updateProgress(pct, `セグメント ${i + 1}/${segments.length} (${mb} MB) ${pct}%`);
+    }
+
+    updateProgress(92, 'MP4に変換中...');
+    const mp4Blob = await transmuxTsToMp4(segmentBuffers);
+    updateProgress(100, 'ダウンロード完了');
+    triggerDownload(mp4Blob, filename);
+  }
+
+  // --- Download direct video ---
+  async function downloadDirect() {
+    const response = await fetchWithProxy(currentUrl);
+    const contentLength = response.headers.get('content-length');
+    const total = contentLength ? parseInt(contentLength, 10) : 0;
+    const reader = response.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    showProgress();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (total > 0) {
+        const pct = Math.round((received / total) * 100);
+        updateProgress(pct, `${(received / 1048576).toFixed(1)} MB / ${(total / 1048576).toFixed(1)} MB (${pct}%)`);
+      } else {
+        updateProgress(50, `${(received / 1048576).toFixed(1)} MB ダウンロード中...`);
+      }
+    }
+
+    updateProgress(100, 'ダウンロード完了');
+
+    const blob = new Blob(chunks, { type: 'video/mp4' });
+    const pathname = new URL(currentUrl).pathname;
+    const parts = pathname.split('/');
+    const last = parts[parts.length - 1];
+    const filename = (last && last.includes('.')) ? last : 'twitter_video_' + Date.now() + '.mp4';
+    triggerDownload(blob, filename);
+  }
+
+  // --- Trigger browser download ---
+  function triggerDownload(blob, filename) {
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  }
+
+  // --- Open in new tab ---
+  function handleNewTab() {
+    if (hlsData) {
+      window.open(hlsData.playlistUrl, '_blank', 'noopener,noreferrer');
+    } else if (currentUrl) {
+      window.open(currentUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  // --- Event listeners ---
+  loadBtn.addEventListener('click', loadVideo);
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadVideo(); });
+  urlInput.addEventListener('paste', () => {
+    setTimeout(() => {
+      const val = urlInput.value.trim();
+      if (ALLOWED_HOSTS.some(h => val.includes(h))) loadVideo();
+    }, 50);
+  });
+  urlInput.addEventListener('input', clearError);
+  downloadBtn.addEventListener('click', handleDownload);
+  newtabBtn.addEventListener('click', handleNewTab);
+})();
+</script>
+
+</body>
+</html>
