@@ -9,8 +9,10 @@ import re
 ALLOWED_HOSTS_RE = re.compile(
     r'^(video\.twimg\.com'
     r'|video\.twimg-image\.cc'
+    r'|video\.twimg-com\.com'
     r'|videy\.vedio\.cc'
     r'|[a-z0-9-]+\.twimg\.com'
+    r'|[a-z0-9-]+\.twimg-com\.com'
     r'|[a-z0-9-]+\.akamaized\.net'
     r'|[a-z0-9-]+\.fun800\.click'
     r'|[a-z0-9-]+\.fun800\.cc)$'

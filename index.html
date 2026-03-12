@@ -461,6 +461,11 @@ body::after {
           <code class="url-example">https://video.twimg-image.cc/...</code>
         </div>
         <div class="url-type">
+          <span class="url-host">video.twimg-com.com</span>
+          <span class="url-desc">Twitter動画のミラーサイト (HLS形式 / 画質選択可能)</span>
+          <code class="url-example">https://video.twimg-com.com/...</code>
+        </div>
+        <div class="url-type">
           <span class="url-host">videy.vedio.cc</span>
           <span class="url-desc">動画共有サイト (HLS形式 / 画質選択可能)</span>
           <code class="url-example">https://videy.vedio.cc/...</code>
@@ -496,7 +501,7 @@ body::after {
   let hlsInstance = null;
   let isDownloading = false;
 
-  const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'videy.vedio.cc'];
+  const ALLOWED_HOSTS = ['video.twimg.com', 'video.twimg-image.cc', 'video.twimg-com.com', 'videy.vedio.cc'];
   const TWEET_HOSTS = ['x.com', 'twitter.com', 'mobile.twitter.com'];
 
   // Proxy detection: available on both localhost (server.py) and Vercel (/api/proxy via rewrite)
@@ -562,7 +567,7 @@ body::after {
         return { valid: true, url: parsed.href, host: parsed.hostname, isTweet: true, tweetUser: match[1], tweetId: match[2] };
       }
       if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
-        return { valid: false, error: '対応サイト: x.com / twitter.com / video.twimg.com / video.twimg-image.cc / videy.vedio.cc' };
+        return { valid: false, error: '対応サイト: x.com / twitter.com / video.twimg.com / video.twimg-image.cc / video.twimg-com.com / videy.vedio.cc' };
       }
       return { valid: true, url: parsed.href, host: parsed.hostname };
     } catch {
@@ -809,7 +814,7 @@ body::after {
         const videoInfo = await extractVideoFromTweet(result.tweetUser, result.tweetId);
         currentUrl = videoInfo.url;
         await loadDirectVideo(videoInfo.url);
-      } else if (result.host === 'video.twimg-image.cc' || result.host === 'videy.vedio.cc') {
+      } else if (result.host === 'video.twimg-image.cc' || result.host === 'video.twimg-com.com' || result.host === 'videy.vedio.cc') {
         await loadTwimgImageVideo(result.url);
       } else {
         await loadDirectVideo(result.url);
