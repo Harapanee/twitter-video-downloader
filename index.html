@@ -311,6 +311,84 @@ body::after {
 }
 
 
+.supported-urls {
+  margin-top: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.supported-urls summary {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+  list-style: none;
+}
+
+.supported-urls summary::before {
+  content: '▶ ';
+  font-size: 0.7rem;
+  display: inline-block;
+  transition: transform 0.2s;
+  margin-right: 4px;
+}
+
+.supported-urls[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.supported-urls summary:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.supported-urls-content {
+  padding: 4px 16px 16px;
+}
+
+.url-type {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.url-type:last-of-type {
+  border-bottom: none;
+}
+
+.url-host {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #b4c3ff;
+}
+
+.url-desc {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.url-example {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+  word-break: break-all;
+}
+
+.url-note {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1.5;
+}
+
 @media (max-width: 480px) {
   .card { padding: 28px 20px; margin: 16px; }
   .input-group { flex-direction: column; }
@@ -363,6 +441,28 @@ body::after {
         </button>
       </div>
     </div>
+
+    <details class="supported-urls">
+      <summary>対応しているURL一覧</summary>
+      <div class="supported-urls-content">
+        <div class="url-type">
+          <span class="url-host">video.twimg.com</span>
+          <span class="url-desc">Twitter/X の動画直リンク (MP4形式でそのままダウンロード)</span>
+          <code class="url-example">https://video.twimg.com/ext_tw_video/...</code>
+        </div>
+        <div class="url-type">
+          <span class="url-host">video.twimg-image.cc</span>
+          <span class="url-desc">Twitter動画のミラーサイト (HLS形式 / 画質選択可能)</span>
+          <code class="url-example">https://video.twimg-image.cc/...</code>
+        </div>
+        <div class="url-type">
+          <span class="url-host">videy.vedio.cc</span>
+          <span class="url-desc">動画共有サイト (HLS形式 / 画質選択可能)</span>
+          <code class="url-example">https://videy.vedio.cc/...</code>
+        </div>
+        <p class="url-note">※ HLS形式の動画は自動的にMP4に変換されます。ローカルサーバー利用時はサーバー側ffmpegで高速変換、それ以外はブラウザ内で変換します。</p>
+      </div>
+    </details>
 
     <div class="footer">動画URLを入力して Load をクリック</div>
   </div>
