@@ -110,6 +110,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(400, 'Invalid URL')
             return
 
+        if target_parsed.scheme not in ('http', 'https'):
+            self.send_error(400, 'Only http and https URLs are allowed')
+            return
+
         hostname = target_parsed.hostname or ''
         if not ALLOWED_HOSTS_RE.match(hostname):
             self.send_error(403, f'Host not allowed: {hostname}')
@@ -194,10 +198,17 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(400, 'No segments provided')
             return
 
+        if len(segment_urls) > 500:
+            self.send_error(400, 'Too many segments (max 500)')
+            return
+
         # Validate all URLs
         for url in segment_urls:
             try:
                 p = urllib.parse.urlparse(url)
+                if p.scheme not in ('http', 'https'):
+                    self.send_error(400, 'Only http and https URLs are allowed')
+                    return
                 if not ALLOWED_HOSTS_RE.match(p.hostname or ''):
                     self.send_error(403, f'Host not allowed: {p.hostname}')
                     return

@@ -9,6 +9,7 @@
 <meta property="og:description" content="Twitter Video Downloaderへのお問い合わせページです。">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ja_JP">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/contact.html">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
      crossorigin="anonymous"></script>
@@ -24,7 +25,7 @@
 <h1>お問い合わせ</h1>
 <p>Twitter Video Downloaderに関するご質問、ご要望、不具合のご報告は、以下のフォームよりお気軽にお寄せください。内容を確認の上、できる限り迅速にご対応いたします。</p>
 
-<form class="contact-form" action="https://formspree.io/f/placeholder" method="POST">
+<form class="contact-form" id="contactForm">
   <div class="form-group">
     <label for="contact-name">お名前</label>
     <input type="text" id="contact-name" name="name" placeholder="山田 太郎" required>
@@ -70,5 +71,13 @@
 
 <div id="site-footer"></div>
 <script src="components.js"></script>
+<script>
+document.getElementById('contactForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  // TODO: フォーム送信サービスのエンドポイントを設定してください
+  // 例: fetch('https://formspree.io/f/YOUR_FORM_ID', { method: 'POST', body: new FormData(this) })
+  alert('お問い合わせありがとうございます。\n現在フォーム送信先を設定中です。');
+});
+</script>
 </body>
 </html>

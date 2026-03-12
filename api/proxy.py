@@ -15,7 +15,8 @@ ALLOWED_HOSTS_RE = re.compile(
     r'|[a-z0-9-]+\.twimg-com\.com'
     r'|[a-z0-9-]+\.akamaized\.net'
     r'|[a-z0-9-]+\.fun800\.click'
-    r'|[a-z0-9-]+\.fun800\.cc)$'
+    r'|[a-z0-9-]+\.fun800\.cc'
+    r'|api\.fxtwitter\.com)$'
 )
 
 USER_AGENT = (
@@ -25,7 +26,7 @@ USER_AGENT = (
 )
 
 CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': 'https://twitter-video-downloader.vercel.app',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': '*',
 }
@@ -64,6 +65,10 @@ class handler(BaseHTTPRequestHandler):
             target_parsed = urllib.parse.urlparse(target_url)
         except Exception:
             self._send_error(400, 'Invalid URL')
+            return
+
+        if target_parsed.scheme not in ('http', 'https'):
+            self._send_error(400, 'Only http and https URLs are allowed')
             return
 
         hostname = target_parsed.hostname or ''
