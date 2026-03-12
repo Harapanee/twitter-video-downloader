@@ -8,6 +8,7 @@ Usage:
     # Open http://localhost:8888 in your browser
 """
 
+import concurrent.futures
 import http.server
 import urllib.request
 import urllib.parse
@@ -23,7 +24,8 @@ from functools import partial
 
 PORT = 8888
 BIND = '127.0.0.1'
-CHUNK_SIZE = 65536
+CHUNK_SIZE = 262144
+MAX_WORKERS = 6
 
 # Allowed hostname patterns
 ALLOWED_HOSTS_RE = re.compile(
@@ -195,9 +197,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
         tmpdir = tempfile.mkdtemp(prefix='tvdl_')
         try:
-            # Download all TS segments
-            ts_files = []
-            for i, url in enumerate(segment_urls):
+            # Download all TS segments in parallel
+            def _download_segment(args):
+                i, url = args
                 ts_path = os.path.join(tmpdir, f'seg{i:04d}.ts')
                 req = urllib.request.Request(url, headers={
                     'User-Agent': USER_AGENT,
@@ -211,7 +213,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                             break
                         f.write(chunk)
                 resp.close()
-                ts_files.append(ts_path)
+                return ts_path
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+                ts_files = list(pool.map(_download_segment, enumerate(segment_urls)))
 
             # Create concat file for ffmpeg
             concat_path = os.path.join(tmpdir, 'concat.txt')

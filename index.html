@@ -984,13 +984,27 @@ body::after {
     // Use server-side ffmpeg conversion if running on localhost
     if (useServerConvert) {
       showProgress();
-      updateProgress(20, 'サーバーで変換中...');
+      updateProgress(5, `サーバーで${segments.length}セグメントをダウンロード・変換中...`);
 
-      const resp = await fetch('/convert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ segments: segments.map(s => s.url) }),
-      });
+      // Simulate progress while waiting for server response
+      let estimatedPct = 5;
+      const progressInterval = setInterval(() => {
+        if (estimatedPct < 85) {
+          estimatedPct += Math.max(1, Math.round((85 - estimatedPct) * 0.08));
+          updateProgress(estimatedPct, `サーバーで変換中... (${estimatedPct}%)`);
+        }
+      }, 500);
+
+      let resp;
+      try {
+        resp = await fetch('/convert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ segments: segments.map(s => s.url) }),
+        });
+      } finally {
+        clearInterval(progressInterval);
+      }
 
       if (!resp.ok) {
         const errText = await resp.text();
@@ -1004,22 +1018,38 @@ body::after {
       return;
     }
 
-    // Client-side: download segments then convert with ffmpeg.wasm
+    // Client-side: download segments in parallel then convert with ffmpeg.wasm
     showProgress();
-    const segmentBuffers = [];
+    const segmentBuffers = new Array(segments.length);
     let downloaded = 0;
+    let completedCount = 0;
+    const MAX_CONCURRENT = 6;
 
-    for (let i = 0; i < segments.length; i++) {
-      const resp = await proxyFetch(segments[i].url);
-      if (!resp.ok) throw new Error(`セグメント ${i + 1} のダウンロードに失敗`);
+    async function downloadSegment(index) {
+      const resp = await proxyFetch(segments[index].url);
+      if (!resp.ok) throw new Error(`セグメント ${index + 1} のダウンロードに失敗`);
       const buf = await resp.arrayBuffer();
-      segmentBuffers.push(new Uint8Array(buf));
+      segmentBuffers[index] = new Uint8Array(buf);
       downloaded += buf.byteLength;
+      completedCount++;
 
-      const pct = Math.round(((i + 1) / segments.length) * 80);
+      const pct = Math.round((completedCount / segments.length) * 80);
       const mb = (downloaded / 1048576).toFixed(1);
-      updateProgress(pct, `セグメント ${i + 1}/${segments.length} (${mb} MB)`);
+      updateProgress(pct, `セグメント ${completedCount}/${segments.length} (${mb} MB)`);
     }
+
+    // Semaphore-based concurrency limiter
+    const queue = segments.map((_, i) => i);
+    const workers = [];
+    for (let w = 0; w < Math.min(MAX_CONCURRENT, segments.length); w++) {
+      workers.push((async () => {
+        while (queue.length > 0) {
+          const idx = queue.shift();
+          await downloadSegment(idx);
+        }
+      })());
+    }
+    await Promise.all(workers);
 
     // Concatenate all TS segments
     let totalLen = 0;
