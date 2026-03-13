@@ -164,15 +164,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(out)
         else:
             self.send_response(200)
-            self.send_header('Content-Type', content_type)
+            if download_mode:
+                self.send_header('Content-Type', 'application/octet-stream')
+                safe_name = dl_filename.replace('"', '_')
+                self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
+            else:
+                self.send_header('Content-Type', content_type)
 
             content_length = resp.headers.get('Content-Length')
             if content_length:
                 self.send_header('Content-Length', content_length)
-
-            if download_mode:
-                safe_name = dl_filename.replace('"', '_')
-                self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
 
             self.end_headers()
 
