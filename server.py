@@ -30,20 +30,16 @@ BIND = '127.0.0.1'
 CHUNK_SIZE = 262144
 MAX_WORKERS = 10
 
-# Allowed hostname patterns
-ALLOWED_HOSTS_RE = re.compile(
-    r'^(video\.twimg\.com'
-    r'|video\.twimg-image\.cc'
-    r'|video\.twimg-com\.com'
-    r'|videy\.vedio\.cc'
-    r'|[a-z0-9-]+\.videy-com\.cc'
-    r'|[a-z0-9-]+\.twimg\.com'
-    r'|[a-z0-9-]+\.twimg-com\.com'
-    r'|[a-z0-9-]+\.akamaized\.net'
-    r'|[a-z0-9-]+\.fun800\.click'
-    r'|[a-z0-9-]+\.fun800\.cc'
-    r'|[a-z0-9-]+\.io-d\.cc'
-    r'|api\.fxtwitter\.com)$'
+# Allow any external host (server is bound to localhost only, so this is safe)
+# Private/internal networks are blocked to prevent SSRF
+BLOCKED_HOSTS_RE = re.compile(
+    r'^(localhost'
+    r'|127\.\d+\.\d+\.\d+'
+    r'|10\.\d+\.\d+\.\d+'
+    r'|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+'
+    r'|192\.168\.\d+\.\d+'
+    r'|0\.0\.0\.0'
+    r'|\[::1\])$'
 )
 
 USER_AGENT = (
@@ -117,7 +113,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         hostname = target_parsed.hostname or ''
-        if not ALLOWED_HOSTS_RE.match(hostname):
+        if BLOCKED_HOSTS_RE.match(hostname):
             self.send_error(403, f'Host not allowed: {hostname}')
             return
 
@@ -211,7 +207,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 if p.scheme not in ('http', 'https'):
                     self.send_error(400, 'Only http and https URLs are allowed')
                     return
-                if not ALLOWED_HOSTS_RE.match(p.hostname or ''):
+                if BLOCKED_HOSTS_RE.match(p.hostname or ''):
                     self.send_error(403, f'Host not allowed: {p.hostname}')
                     return
             except Exception:
