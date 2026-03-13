@@ -1134,7 +1134,7 @@
 
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = '/download';
+      form.action = '/proxy';
       form.style.display = 'none';
 
       const fnInput = document.createElement('input');
@@ -1267,17 +1267,11 @@
   async function downloadDirect() {
     const filename = getDownloadFilename(currentUrl);
 
-    // iOS Safari: navigate to server endpoint with Content-Disposition
+    // iOS Safari: navigate to proxy with Content-Disposition header
     // so the file saves directly to the Files app Downloads folder
-    if (isIOS && isServed) {
-      let downloadUrl;
-      if (useServerConvert) {
-        downloadUrl = localProxyBase + encodeURIComponent(currentUrl)
-          + '&download=1&filename=' + encodeURIComponent(filename);
-      } else {
-        downloadUrl = '/download?url=' + encodeURIComponent(currentUrl)
-          + '&filename=' + encodeURIComponent(filename);
-      }
+    if (isIOS && localProxyBase) {
+      const downloadUrl = localProxyBase + encodeURIComponent(currentUrl)
+        + '&download=1&filename=' + encodeURIComponent(filename);
       window.location.href = downloadUrl;
       return;
     }

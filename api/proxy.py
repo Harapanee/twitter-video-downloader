@@ -1,10 +1,17 @@
-"""Vercel serverless function: CORS-bypassing reverse proxy for video URLs."""
+"""Vercel serverless function: CORS-bypassing reverse proxy for video URLs.
+
+GET  /proxy?url=...                          → proxy single URL
+GET  /proxy?url=...&download=1&filename=...  → proxy with Content-Disposition
+POST /proxy  (form: segment[]+filename)      → download HLS segments, concatenate, serve
+"""
 
 from http.server import BaseHTTPRequestHandler
 import urllib.request
 import urllib.parse
 import urllib.error
 import re
+import json
+from concurrent.futures import ThreadPoolExecutor
 
 ALLOWED_HOSTS_RE = re.compile(
     r'^(video\.twimg\.com'
@@ -29,9 +36,23 @@ USER_AGENT = (
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': '*',
 }
+
+
+def _fetch_url(url):
+    """Download a single URL and return its bytes."""
+    parsed = urllib.parse.urlparse(url)
+    req = urllib.request.Request(url, headers={
+        'User-Agent': USER_AGENT,
+        'Accept': '*/*',
+        'Referer': f'{parsed.scheme}://{parsed.hostname}/',
+    })
+    resp = urllib.request.urlopen(req, timeout=30)
+    data = resp.read()
+    resp.close()
+    return data
 
 
 class handler(BaseHTTPRequestHandler):
@@ -129,3 +150,60 @@ class handler(BaseHTTPRequestHandler):
         self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
+
+    def do_POST(self):
+        """Download HLS segments, concatenate, and serve with Content-Disposition."""
+        content_length = int(self.headers.get('Content-Length', 0))
+        raw_body = self.rfile.read(content_length)
+        content_type = self.headers.get('Content-Type', '')
+
+        segments = []
+        filename = 'video.ts'
+
+        if 'application/json' in content_type:
+            try:
+                obj = json.loads(raw_body)
+                segments = obj.get('segments', [])
+                filename = obj.get('filename', filename)
+            except Exception:
+                self._send_error(400, 'Invalid JSON')
+                return
+        else:
+            # application/x-www-form-urlencoded
+            params = urllib.parse.parse_qs(raw_body.decode('utf-8'))
+            segments = params.get('segment', [])
+            filename = (params.get('filename') or [filename])[0]
+
+        if not segments:
+            self._send_error(400, 'No segments provided')
+            return
+
+        for s in segments:
+            hostname = ''
+            try:
+                hostname = urllib.parse.urlparse(s).hostname or ''
+            except Exception:
+                pass
+            if not ALLOWED_HOSTS_RE.match(hostname):
+                self._send_error(403, f'Host not allowed: {hostname}')
+                return
+
+        # Download all segments in parallel
+        try:
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                results = list(pool.map(_fetch_url, segments))
+        except Exception as e:
+            self._send_error(502, f'Segment download failed: {e}')
+            return
+
+        # Concatenate all segments
+        merged = b''.join(results)
+
+        safe_name = filename.replace('"', '_')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/octet-stream')
+        self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
+        self.send_header('Content-Length', str(len(merged)))
+        self._send_cors_headers()
+        self.end_headers()
+        self.wfile.write(merged)
