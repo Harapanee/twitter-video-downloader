@@ -1124,82 +1124,37 @@
     const quality = qualitySelect.selectedOptions[0]?.textContent.split(' ')[0] || '';
     const filename = hlsData.name + '_' + quality + '.mp4';
 
-    // iOS Safari (Vercel): download segments client-side and use share/blob
+    // iOS Safari: POST form to /proxy for direct save to Files app
     if (isIOS && !useServerConvert && isServed) {
-      showProgress();
-      const segmentBuffers = new Array(segments.length);
-      let dlBytes = 0;
-      let dlCount = 0;
-      const MAX_CONCURRENT = 6;
+      const tsFilename = hlsData.name + '_' + quality + '.ts';
 
-      async function dlSeg(index) {
-        const resp = await proxyFetch(segments[index].url);
-        if (!resp.ok) throw new Error(`セグメント ${index + 1} のダウンロードに失敗`);
-        const buf = await resp.arrayBuffer();
-        segmentBuffers[index] = new Uint8Array(buf);
-        dlBytes += buf.byteLength;
-        dlCount++;
-        const pct = Math.round((dlCount / segments.length) * 80);
-        updateProgress(pct, `セグメント ${dlCount}/${segments.length} (${(dlBytes / 1048576).toFixed(1)} MB)`);
+      showInfo('動画を準備中です。しばらくお待ちください...');
+      setDownloading(true);
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/proxy';
+      form.style.display = 'none';
+
+      for (const seg of segments) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'segment';
+        input.value = seg.url;
+        form.appendChild(input);
       }
 
-      const queue = segments.map((_, i) => i);
-      const workers = [];
-      for (let w = 0; w < Math.min(MAX_CONCURRENT, segments.length); w++) {
-        workers.push((async () => {
-          while (queue.length > 0) { await dlSeg(queue.shift()); }
-        })());
-      }
-      await Promise.all(workers);
+      const fnInput = document.createElement('input');
+      fnInput.type = 'hidden';
+      fnInput.name = 'filename';
+      fnInput.value = tsFilename;
+      form.appendChild(fnInput);
 
-      let totalLen = 0;
-      for (const buf of segmentBuffers) totalLen += buf.byteLength;
-      const tsData = new Uint8Array(totalLen);
-      let pos = 0;
-      for (const buf of segmentBuffers) { tsData.set(buf, pos); pos += buf.byteLength; }
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
 
-      // Try MP4 conversion, fall back to .ts
-      let blob;
-      let dlFilename = filename;
-      updateProgress(85, 'MP4に変換中...');
-      try {
-        blob = await convertTsToMp4(tsData);
-        scheduleFFmpegCleanup();
-      } catch (e) {
-        console.warn('MP4 conversion failed on iOS, using .ts:', e);
-        dlFilename = hlsData.name + '_' + quality + '.ts';
-        blob = new Blob([tsData], { type: 'video/mp2t' });
-      }
-
-      updateProgress(100, 'ダウンロード完了');
-
-      // Try navigator.share (iOS 15+)
-      if (navigator.share && navigator.canShare) {
-        try {
-          const file = new File([blob], dlFilename, { type: blob.type });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: dlFilename });
-            hideProgress();
-            showInfo('共有メニューから「ファイルに保存」を選択してください。');
-            return;
-          }
-        } catch (e) {
-          if (e.name === 'AbortError') { hideProgress(); return; }
-          console.debug('[iOS share] failed:', e);
-        }
-      }
-
-      // Fallback: blob URL download
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = dlFilename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-      hideProgress();
-      showInfo('ダウンロードが開始されました。表示されない場合は、動画を長押しして保存してください。');
+      setTimeout(() => { clearInfo(); setDownloading(false); }, 8000);
       return;
     }
 
@@ -1308,66 +1263,11 @@
   async function downloadDirect() {
     const filename = getDownloadFilename(currentUrl);
 
-    // iOS Safari on localhost: use proxy with Content-Disposition
-    if (isIOS && useServerConvert && localProxyBase) {
+    // iOS Safari: use proxy with Content-Disposition for direct save to Files app
+    if (isIOS && localProxyBase) {
       const downloadUrl = localProxyBase + encodeURIComponent(currentUrl)
         + '&download=1&filename=' + encodeURIComponent(filename);
       window.location.href = downloadUrl;
-      return;
-    }
-
-    // iOS Safari on Vercel: download client-side and use share API
-    if (isIOS && isServed && !useServerConvert) {
-      showProgress();
-      updateProgress(10, 'ダウンロード中...');
-      const response = await fetchWithProxy(currentUrl);
-      const contentLength = response.headers.get('content-length');
-      const total = contentLength ? parseInt(contentLength, 10) : 0;
-      const reader = response.body.getReader();
-      const chunks = [];
-      let received = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        received += value.length;
-        if (total > 0) {
-          const pct = Math.round((received / total) * 100);
-          updateProgress(pct, `${(received / 1048576).toFixed(1)} MB / ${(total / 1048576).toFixed(1)} MB (${pct}%)`);
-        } else {
-          updateProgress(50, `${(received / 1048576).toFixed(1)} MB ダウンロード中...`);
-        }
-      }
-
-      updateProgress(100, 'ダウンロード完了');
-      const blob = new Blob(chunks, { type: 'video/mp4' });
-
-      if (navigator.share && navigator.canShare) {
-        try {
-          const file = new File([blob], filename, { type: 'video/mp4' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: filename });
-            hideProgress();
-            showInfo('共有メニューから「ファイルに保存」を選択してください。');
-            return;
-          }
-        } catch (e) {
-          if (e.name === 'AbortError') { hideProgress(); return; }
-          console.debug('[iOS share] failed:', e);
-        }
-      }
-
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-      hideProgress();
-      showInfo('ダウンロードが開始されました。表示されない場合は、動画を長押しして保存してください。');
       return;
     }
 

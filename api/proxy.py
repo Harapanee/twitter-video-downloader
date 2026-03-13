@@ -196,14 +196,14 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(502, f'Segment download failed: {e}')
             return
 
-        # Concatenate all segments
-        merged = b''.join(results)
-
+        # Stream segments to response
+        total_size = sum(len(r) for r in results)
         safe_name = filename.replace('"', '_')
         self.send_response(200)
         self.send_header('Content-Type', 'application/octet-stream')
         self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
-        self.send_header('Content-Length', str(len(merged)))
+        self.send_header('Content-Length', str(total_size))
         self._send_cors_headers()
         self.end_headers()
-        self.wfile.write(merged)
+        for data in results:
+            self.wfile.write(data)
