@@ -520,6 +520,18 @@
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+  // Register Service Worker for iOS download-to-Files support
+  let swReady = false;
+  if (isIOS && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(() => {
+      return navigator.serviceWorker.ready;
+    }).then(() => {
+      swReady = true;
+    }).catch(err => {
+      console.debug('SW registration failed:', err);
+    });
+  }
+
   const CORS_OPEN_HOSTS = ['fun800.click', 'fun800.cc'];
 
   function isCorsOpen(url) {
@@ -1155,7 +1167,7 @@
       updateProgress(90, 'ダウンロード中...');
       const blob = await resp.blob();
       updateProgress(100, 'ダウンロード完了');
-      triggerDownload(blob, filename);
+      await triggerDownload(blob, filename);
       return;
     }
 
@@ -1203,13 +1215,13 @@
     try {
       const mp4Blob = await convertTsToMp4(tsData);
       updateProgress(100, 'ダウンロード完了');
-      triggerDownload(mp4Blob, filename);
+      await triggerDownload(mp4Blob, filename);
     } catch (e) {
       console.warn('MP4 conversion failed, falling back to .ts:', e);
       showInfo('MP4変換に失敗したため .ts 形式でダウンロードします');
       updateProgress(100, 'ダウンロード完了 (.ts)');
       const tsFilename = hlsData.name + '_' + quality + '.ts';
-      triggerDownload(new Blob([tsData], { type: 'video/mp2t' }), tsFilename);
+      await triggerDownload(new Blob([tsData], { type: 'video/mp2t' }), tsFilename);
     } finally {
       scheduleFFmpegCleanup();
     }
@@ -1263,10 +1275,32 @@
     updateProgress(100, 'ダウンロード完了');
 
     const blob = new Blob(chunks, { type: 'video/mp4' });
-    triggerDownload(blob, filename);
+    await triggerDownload(blob, filename);
   }
 
-  function triggerDownload(blob, filename) {
+  async function triggerDownload(blob, filename) {
+    // iOS Safari: use Service Worker to serve with Content-Disposition
+    // so the file saves directly to the Files app Downloads folder
+    if (isIOS && swReady && navigator.serviceWorker.controller) {
+      try {
+        const cache = await caches.open('ios-download-v1');
+        const safeName = filename.replace(/"/g, '_');
+        const downloadUrl = location.origin + '/__download/' + encodeURIComponent(safeName);
+        const response = new Response(blob, {
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': 'attachment; filename="' + safeName + '"',
+            'Content-Length': blob.size.toString(),
+          }
+        });
+        await cache.put(downloadUrl, response);
+        window.location.href = downloadUrl;
+        return;
+      } catch (e) {
+        console.warn('SW download failed, falling back:', e);
+      }
+    }
+
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
