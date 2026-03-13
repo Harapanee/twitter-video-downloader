@@ -520,18 +520,6 @@
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-  // Register Service Worker for iOS download-to-Files support
-  let swReady = false;
-  if (isIOS && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then(() => {
-      return navigator.serviceWorker.ready;
-    }).then(() => {
-      swReady = true;
-    }).catch(err => {
-      console.debug('SW registration failed:', err);
-    });
-  }
-
   const CORS_OPEN_HOSTS = ['fun800.click', 'fun800.cc'];
 
   function isCorsOpen(url) {
@@ -1136,6 +1124,44 @@
     const quality = qualitySelect.selectedOptions[0]?.textContent.split(' ')[0] || '';
     const filename = hlsData.name + '_' + quality + '.mp4';
 
+    // iOS Safari (Vercel): submit segment URLs to Edge Function
+    // Server downloads, concatenates, and serves with Content-Disposition
+    // so the file saves directly to the Files app
+    if (isIOS && !useServerConvert && isServed) {
+      const tsFilename = hlsData.name + '_' + quality + '.ts';
+      showProgress();
+      updateProgress(10, 'サーバーでダウンロード準備中...');
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/download';
+      form.style.display = 'none';
+
+      const fnInput = document.createElement('input');
+      fnInput.type = 'hidden';
+      fnInput.name = 'filename';
+      fnInput.value = tsFilename;
+      form.appendChild(fnInput);
+
+      for (const seg of segments) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'segment';
+        input.value = seg.url;
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      setTimeout(() => {
+        hideProgress();
+        showInfo('ダウンロードが開始されました。ファイルアプリのダウンロードフォルダに保存されます。');
+      }, 2000);
+      return;
+    }
+
     if (useServerConvert) {
       showProgress();
       updateProgress(5, `サーバーで${segments.length}セグメントをダウンロード・変換中...`);
@@ -1167,7 +1193,7 @@
       updateProgress(90, 'ダウンロード中...');
       const blob = await resp.blob();
       updateProgress(100, 'ダウンロード完了');
-      await triggerDownload(blob, filename);
+      triggerDownload(blob, filename);
       return;
     }
 
@@ -1215,13 +1241,13 @@
     try {
       const mp4Blob = await convertTsToMp4(tsData);
       updateProgress(100, 'ダウンロード完了');
-      await triggerDownload(mp4Blob, filename);
+      triggerDownload(mp4Blob, filename);
     } catch (e) {
       console.warn('MP4 conversion failed, falling back to .ts:', e);
       showInfo('MP4変換に失敗したため .ts 形式でダウンロードします');
       updateProgress(100, 'ダウンロード完了 (.ts)');
       const tsFilename = hlsData.name + '_' + quality + '.ts';
-      await triggerDownload(new Blob([tsData], { type: 'video/mp2t' }), tsFilename);
+      triggerDownload(new Blob([tsData], { type: 'video/mp2t' }), tsFilename);
     } finally {
       scheduleFFmpegCleanup();
     }
@@ -1241,11 +1267,17 @@
   async function downloadDirect() {
     const filename = getDownloadFilename(currentUrl);
 
-    // iOS Safari: use direct navigation with Content-Disposition header
-    // so the file saves to the Files app Downloads folder
-    if (isIOS && localProxyBase) {
-      const downloadUrl = localProxyBase + encodeURIComponent(currentUrl)
-        + '&download=1&filename=' + encodeURIComponent(filename);
+    // iOS Safari: navigate to server endpoint with Content-Disposition
+    // so the file saves directly to the Files app Downloads folder
+    if (isIOS && isServed) {
+      let downloadUrl;
+      if (useServerConvert) {
+        downloadUrl = localProxyBase + encodeURIComponent(currentUrl)
+          + '&download=1&filename=' + encodeURIComponent(filename);
+      } else {
+        downloadUrl = '/download?url=' + encodeURIComponent(currentUrl)
+          + '&filename=' + encodeURIComponent(filename);
+      }
       window.location.href = downloadUrl;
       return;
     }
@@ -1275,32 +1307,10 @@
     updateProgress(100, 'ダウンロード完了');
 
     const blob = new Blob(chunks, { type: 'video/mp4' });
-    await triggerDownload(blob, filename);
+    triggerDownload(blob, filename);
   }
 
-  async function triggerDownload(blob, filename) {
-    // iOS Safari: use Service Worker to serve with Content-Disposition
-    // so the file saves directly to the Files app Downloads folder
-    if (isIOS && swReady && navigator.serviceWorker.controller) {
-      try {
-        const cache = await caches.open('ios-download-v1');
-        const safeName = filename.replace(/"/g, '_');
-        const downloadUrl = location.origin + '/__download/' + encodeURIComponent(safeName);
-        const response = new Response(blob, {
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Disposition': 'attachment; filename="' + safeName + '"',
-            'Content-Length': blob.size.toString(),
-          }
-        });
-        await cache.put(downloadUrl, response);
-        window.location.href = downloadUrl;
-        return;
-      } catch (e) {
-        console.warn('SW download failed, falling back:', e);
-      }
-    }
-
+  function triggerDownload(blob, filename) {
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
@@ -1309,9 +1319,6 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    if (isIOS) {
-      showInfo('Safari左上の↓アイコン → ファイルをタップ → 共有(□↑) → 「"ファイル"に保存」で保存できます');
-    }
   }
 
   function handleNewTab() {
