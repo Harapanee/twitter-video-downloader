@@ -56,6 +56,9 @@ class handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
         url_list = params.get('url')
+        download_mode = 'download' in params
+        filename_list = params.get('filename')
+        dl_filename = filename_list[0] if filename_list else 'video.mp4'
 
         if not url_list:
             self._send_error(400, 'Missing url parameter')
@@ -118,6 +121,9 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(body)))
+        if download_mode:
+            safe_name = dl_filename.replace('"', '_')
+            self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
         self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)

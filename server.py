@@ -94,6 +94,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def _handle_proxy(self, parsed):
         params = urllib.parse.parse_qs(parsed.query)
         url_list = params.get('url')
+        download_mode = 'download' in params
+        filename_list = params.get('filename')
+        dl_filename = filename_list[0] if filename_list else 'video.mp4'
 
         if not url_list:
             self.send_error(400, 'Missing url parameter')
@@ -166,6 +169,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             content_length = resp.headers.get('Content-Length')
             if content_length:
                 self.send_header('Content-Length', content_length)
+
+            if download_mode:
+                safe_name = dl_filename.replace('"', '_')
+                self.send_header('Content-Disposition', f'attachment; filename="{safe_name}"')
 
             self.end_headers()
 

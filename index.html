@@ -518,6 +518,8 @@
       : 'Twitter動画URLから動画を保存';
   }
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   const CORS_OPEN_HOSTS = ['fun800.click', 'fun800.cc'];
 
   function isCorsOpen(url) {
@@ -1213,7 +1215,29 @@
     }
   }
 
+  function getDownloadFilename(url) {
+    try {
+      const pathname = new URL(url).pathname;
+      const parts = pathname.split('/');
+      const last = parts[parts.length - 1];
+      return (last && last.includes('.')) ? last : 'twitter_video_' + Date.now() + '.mp4';
+    } catch {
+      return 'twitter_video_' + Date.now() + '.mp4';
+    }
+  }
+
   async function downloadDirect() {
+    const filename = getDownloadFilename(currentUrl);
+
+    // iOS Safari: use direct navigation with Content-Disposition header
+    // so the file saves to the Files app Downloads folder
+    if (isIOS && localProxyBase) {
+      const downloadUrl = localProxyBase + encodeURIComponent(currentUrl)
+        + '&download=1&filename=' + encodeURIComponent(filename);
+      window.location.href = downloadUrl;
+      return;
+    }
+
     const response = await fetchWithProxy(currentUrl);
     const contentLength = response.headers.get('content-length');
     const total = contentLength ? parseInt(contentLength, 10) : 0;
@@ -1239,15 +1263,6 @@
     updateProgress(100, 'ダウンロード完了');
 
     const blob = new Blob(chunks, { type: 'video/mp4' });
-    let filename;
-    try {
-      const pathname = new URL(currentUrl).pathname;
-      const parts = pathname.split('/');
-      const last = parts[parts.length - 1];
-      filename = (last && last.includes('.')) ? last : 'twitter_video_' + Date.now() + '.mp4';
-    } catch {
-      filename = 'twitter_video_' + Date.now() + '.mp4';
-    }
     triggerDownload(blob, filename);
   }
 
@@ -1260,6 +1275,9 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    if (isIOS) {
+      showInfo('Safari左上の↓アイコン → ファイルをタップ → 共有(□↑) → 「"ファイル"に保存」で保存できます');
+    }
   }
 
   function handleNewTab() {
