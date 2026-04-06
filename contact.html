@@ -9,6 +9,8 @@
 <meta property="og:description" content="Twitter Video Downloaderへのお問い合わせページです。">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://twitter-video-downloader.vercel.app/contact.html">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
@@ -29,7 +31,7 @@
   <h2>運営者情報</h2>
   <table class="info-table">
     <tr><th>運営</th><td>HaraTeck合同会社</td></tr>
-    <tr><th>メール</th><td><a href="mailto:contact@harateck.com">contact@harateck.com</a></td></tr>
+    <tr><th>メール</th><td><a href="mailto:k.hara@harateck.com">k.hara@harateck.com</a></td></tr>
   </table>
 </div>
 
@@ -88,7 +90,7 @@ document.getElementById('contactForm').addEventListener('submit', function(e) {
   const message = document.getElementById('contact-message').value;
   const subject = encodeURIComponent('[Twitter Video Downloader] ' + type + 'のお問い合わせ');
   const body = encodeURIComponent('お名前: ' + name + '\nメールアドレス: ' + email + '\n種類: ' + type + '\n\n' + message);
-  window.location.href = 'mailto:contact@harateck.com?subject=' + subject + '&body=' + body;
+  window.location.href = 'mailto:k.hara@harateck.com?subject=' + subject + '&body=' + body;
 });
 </script>
 </body>
