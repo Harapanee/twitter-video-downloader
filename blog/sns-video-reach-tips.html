@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNS動画をもっと多くの人に届けるための基礎知識 - Twitter Video Downloader</title>
+<meta name="description" content="Twitter・Instagram・TikTok・YouTubeの動画仕様比較と、エンゲージメントを高めるための実践的なコツを解説します。">
+<meta property="og:title" content="SNS動画をもっと多くの人に届けるための基礎知識">
+<meta property="og:description" content="SNS動画のリーチを伸ばすための実践的なコツとプラットフォーム別の動画仕様を解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-sns.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/sns-video-reach-tips.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "SNS動画をもっと多くの人に届けるための基礎知識",
+  "datePublished": "2026-04-01",
+  "dateModified": "2026-04-01",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "SNS動画のリーチを伸ばすための実践的なコツとプラットフォーム別の動画仕様を解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">SNS動画のリーチを伸ばすコツ</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年4月1日</p>
+  <h1>SNS動画をもっと多くの人に届けるための基礎知識</h1>
+  <div class="article-tags">
+    <span class="article-tag">ガイド</span>
+    <span class="article-tag">SNS</span>
+  </div>
+</div>
+
+<p>このサイトのダウンロード機能を作る過程で、Twitter動画のURLを何千本と解析してきた。そのうちバズってる動画（リツイートやいいねが大量についてるやつ）と、ほぼ誰にも見られてない動画を比べてみると、明らかに共通するパターンがあることに気づいた。動画の内容がいい悪いとは別のところで、リーチに差がついてる。今回はその辺の知見をまとめてみる。</p>
+
+<h2>まずプラットフォームごとの仕様を押さえる</h2>
+
+<p>動画を投稿するとき、意外と仕様を気にしてない人が多い。でもプラットフォームごとに推奨される解像度やアスペクト比、最大尺が全然違う。仕様から外れた動画はそもそも不利なスタートを切ることになる。</p>
+
+<table class="info-table">
+  <tr><th>プラットフォーム</th><th>推奨解像度</th><th>アスペクト比</th><th>最大尺</th></tr>
+  <tr><td>Twitter（X）</td><td>1920x1080</td><td>16:9 / 1:1</td><td>2分20秒（一般）/ 最大4時間（Premium）</td></tr>
+  <tr><td>Instagram リール</td><td>1080x1920</td><td>9:16</td><td>90秒</td></tr>
+  <tr><td>TikTok</td><td>1080x1920</td><td>9:16</td><td>10分</td></tr>
+  <tr><td>YouTube ショート</td><td>1080x1920</td><td>9:16</td><td>60秒</td></tr>
+  <tr><td>YouTube 通常</td><td>1920x1080〜3840x2160</td><td>16:9</td><td>12時間</td></tr>
+</table>
+
+<p>ここで一番重要なのは<strong>アスペクト比</strong>。InstagramリールやTikTokは縦型（9:16）が前提で、横型の動画を投稿すると上下に黒帯が入って画面の半分くらいしか使えない。タイムラインで流れてきた時のインパクトが全然違うので、ここを間違えるだけで視聴者が離脱する確率がグンと上がる。</p>
+
+<p>Twitterは横型（16:9）と正方形（1:1）の両方に対応してるけど、タイムライン上では横型のほうが表示面積が大きくて目立つ。自分がTwitter動画を解析してて感じるのは、横型1080pの動画がエンゲージメント的には一番強い。</p>
+
+<h2>最初の3秒が全て</h2>
+
+<p>これはどのプラットフォームでも共通してる話なんだけど、最初の3秒で視聴者を引っかけられないと、スクロールされて終わり。SNSの動画は基本オートプレイだから、サムネイルが表示される時間は一瞬。その一瞬で「お、なんだこれ」と思わせないと再生数は伸びない。</p>
+
+<p>バズってるTwitter動画を見てると、冒頭に余計な「前置き」がないものが圧倒的に多い。いきなり本題に入る。テレビ番組みたいなオープニング演出を入れてる動画もたまにあるけど、SNSでそれをやると秒で離脱される。</p>
+
+<h3>テキストオーバーレイの威力</h3>
+
+<p>SNSの動画はミュートで再生されることが多い。特にTwitterだとデフォルトがミュート再生。つまり、音声なしでも内容が伝わるようにしておかないと、そもそも何の動画か分からないまま通り過ぎていく。</p>
+
+<p>解決策としてシンプルなのが<strong>テキストオーバーレイ</strong>（動画の上にテロップを乗せるやつ）。これがあるだけで、ミュート再生でも内容が伝わる。TikTokやInstagramリールだとほぼ全ての人気動画にテロップが入ってるけど、Twitterは意外とテロップなしの動画が多い。逆に言えば、テロップを入れるだけで差がつく。</p>
+
+<h2>サムネイルは動画の顔</h2>
+
+<p>YouTubeではサムネイルの重要性は常識だけど、他のプラットフォームだと軽視されがち。Twitterの場合、動画をアップロードすると自動で切り出されたフレームがサムネイルになるんだけど、自分で選べる場合は絶対に選んだほうがいい。</p>
+
+<p>自分がTwitter動画を大量に見てきて思うのは、<strong>サムネイルが「何の動画か」を一瞬で伝えてる動画は再生数が高い</strong>ということ。ぼやけたフレームとか、黒画面がサムネになってるやつは、どんなに中身が良くてもクリックされない。</p>
+
+<p>Instagramやtiktokではカバー画像を別途設定できるので、これを使わない手はない。プロフィールのグリッド表示で見た時の統一感にも影響するし。</p>
+
+<h2>画質は思ってる以上に重要</h2>
+
+<p>「内容さえ良ければ画質は関係ない」と思ってる人がいるかもしれないけど、実際にデータを見ると画質は結構効いてくる。低画質の動画はそれだけで「なんか安っぽい」と感じさせてしまう。</p>
+
+<p>各プラットフォームは動画をアップロードした時点で再エンコード（再圧縮）する。<a href="twitter-video-quality-guide.html">Twitterの画質の仕組み</a>については別記事で詳しく書いたけど、ポイントは<strong>できるだけ高い解像度・ビットレートでアップロードすること</strong>。どうせ再圧縮されるんだけど、元の品質が高ければ再圧縮後の品質も高くなる。720pでアップしたものと1080pでアップしたものでは、再圧縮後の見た目に差が出る。</p>
+
+<p>あと、LINEやMessengerで送られてきた動画をそのまま投稿するのはやめたほうがいい。メッセージアプリの時点でかなり圧縮されてるから、それをSNSで再圧縮すると二重劣化で見れたもんじゃなくなる。元データを使おう。</p>
+
+<h2>投稿タイミングとハッシュタグ</h2>
+
+<p>ぶっちゃけ投稿タイミングの最適解はジャンルやターゲット層によって全然違うんだけど、一般的に言えることはある。</p>
+
+<ul>
+  <li><strong>Twitter</strong>: 朝7〜8時（通勤中）、昼12〜13時（昼休み）、夜20〜22時（帰宅後）が反応良い傾向</li>
+  <li><strong>Instagram</strong>: 平日の夕方〜夜、土日の昼間</li>
+  <li><strong>TikTok</strong>: 夜21〜24時がピークだけど、TikTokはアルゴリズムが強いので投稿時間より動画の質が重要</li>
+  <li><strong>YouTube</strong>: 金曜の夕方〜土曜に公開する動画が週末に伸びやすい</li>
+</ul>
+
+<p>ハッシュタグについては、Twitterだと2〜3個が適切。多すぎるとスパムっぽく見える。InstagramやTikTokはもう少し多くてもいいけど、関連性の低いタグをつけまくるのは逆効果。アルゴリズムが「この動画はジャンルがよく分からん」と判断して、誰にもレコメンドされなくなる。</p>
+
+<h2>マルチプラットフォーム展開のコツ</h2>
+
+<p>1本の動画を複数のSNSに投稿するのは効率がいいけど、さっき書いた通り各プラットフォームで推奨される仕様が違う。横型で撮った動画をそのままInstagramリールに投稿しても伸びない。</p>
+
+<p>やり方としては、撮影時は少し引き気味に撮っておいて、横型用と縦型用でそれぞれクロップ（切り出し）するのが現実的。メインの被写体を中央に寄せておけば、縦にも横にも切り出しやすい。</p>
+
+<p>あと、他のプラットフォームのロゴ入りウォーターマークは避けたほうがいい。TikTokのロゴ入り動画をInstagramリールに投稿すると、アルゴリズムによってリーチが制限されるという話がある（Instagram側が公式にそう言ってる）。逆も同じ。</p>
+
+<h2>まとめ</h2>
+
+<p>SNSで動画のリーチを伸ばすのに魔法みたいな方法はない。プラットフォームの仕様に合わせて、最初の3秒で掴んで、画質を落とさず、適切なタイミングで投稿する。地味だけど、これを全部やってる人は意外と少ない。Twitter動画を分析してて強く感じるのは、伸びてる動画は「内容が良い」だけじゃなくて「届け方がうまい」ということ。動画を保存して研究したい場合は、<a href="../index.html">うちのダウンローダー</a>でサクッと保存して見比べてみてください。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="twitter-video-quality-guide.html">Twitter動画の画質と解像度の完全ガイド</a></li>
+    <li><a href="smartphone-video-sharing-tips.html">スマホで撮った動画を高画質のまま共有するコツ</a></li>
+    <li><a href="video-metadata-explained.html">動画のメタデータとは — ファイルに埋め込まれた見えない情報</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>

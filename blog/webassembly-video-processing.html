@@ -21,11 +21,16 @@
   "@context": "https://schema.org",
   "@type": "Article",
   "headline": "WebAssemblyで実現するブラウザ内動画処理の仕組み",
-  "datePublished": "2026-04-02",
-  "dateModified": "2026-04-02",
+  "datePublished": "2026-03-03",
+  "dateModified": "2026-03-03",
   "author": {
-    "@type": "Organization",
-    "name": "HaraTeck合同会社"
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
   },
   "publisher": {
     "@type": "Organization",
@@ -39,11 +44,19 @@
 
 <div id="site-header"></div>
 
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">WebAssemblyで実現するブラウザ内動画処理の仕組み</span></li>
+  </ol>
+</nav>
+
 <main class="page-container">
 <div class="content-card">
 
 <div class="article-header">
-  <p class="article-date">2026年4月2日</p>
+  <p class="article-date">2026年3月3日</p>
   <h1>WebAssemblyで実現するブラウザ内動画処理の仕組み</h1>
   <div class="article-tags">
     <span class="article-tag">技術解説</span>
@@ -156,6 +169,24 @@
 <p>ffmpeg.wasmとWebAssemblyのおかげで、動画変換をブラウザ内だけで完結させることができた。サーバーに動画を送らなくていいので、プライバシー面で胸を張れるツールになったと思う。</p>
 
 <p>メモリ制限、初回ロード時間、処理速度と課題はまだある。でも、WebAssemblyの仕様自体が進化し続けてるし（GC対応、スレッド対応、SIMD対応など）、ブラウザでできることの幅は年々広がってる。個人的には「ブラウザがOSになる日」はそう遠くないんじゃないかと思ってる。</p>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="hls-mp4-difference.html">HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識</a></li>
+    <li><a href="browser-video-download-safety.html">ブラウザで動画をダウンロードする際の安全性と注意点</a></li>
+    <li><a href="video-compression-explained.html">動画圧縮の仕組み — なぜファイルサイズは小さくなるのか</a></li>
+  </ul>
+</div>
 
 <div class="blog-nav">
   <a href="../blog.html">記事一覧に戻る</a>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スマホで撮った動画を高画質のまま共有するコツ - Twitter Video Downloader</title>
+<meta name="description" content="スマホの動画を画質を落とさずに共有する実践的なコツ。カメラ設定、二重圧縮の回避方法、各アプリの圧縮事情について詳しく解説します。">
+<meta property="og:title" content="スマホで撮った動画を高画質のまま共有するコツ">
+<meta property="og:description" content="スマホの動画を画質を落とさずに共有するための実践的なコツを解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-smartphone.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/smartphone-video-sharing-tips.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "スマホで撮った動画を高画質のまま共有するコツ",
+  "datePublished": "2026-03-11",
+  "dateModified": "2026-03-11",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "スマホの動画を画質を落とさずに共有するための実践的なコツを解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">スマホ動画を高画質で共有するコツ</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年3月11日</p>
+  <h1>スマホで撮った動画を高画質のまま共有するコツ</h1>
+  <div class="article-tags">
+    <span class="article-tag">ガイド</span>
+    <span class="article-tag">スマートフォン</span>
+  </div>
+</div>
+
+<p>このサイトを運営してると「ダウンロードした動画の画質が悪い」という問い合わせが結構来る。で、実際に元のツイートを確認してみると、Twitter上の動画の時点ですでに画質がかなり厳しい。さらに調べると、スマホの撮影設定が低画質だったり、LINEで送った動画をそのままTwitterに上げてたり、元動画の段階で劣化してるケースがすごく多かった。</p>
+
+<p>つまり問題はダウンロードツール側じゃなくて、撮影と共有の過程で画質が削られてるということ。今回はスマホで撮った動画を、なるべく画質を落とさずに共有するための実践的なコツを書いてみる。</p>
+
+<h2>まずカメラ設定を確認する</h2>
+
+<p>スマホのカメラ設定、デフォルトのまま使ってる人がかなり多い。でもデフォルトが最高画質とは限らない。むしろストレージ節約のために中画質に設定されてることが多い。</p>
+
+<h3>iPhoneの場合</h3>
+
+<p>設定 → カメラ → ビデオ撮影 で確認できる。選択肢は主にこの辺り：</p>
+
+<ul>
+  <li><strong>720p HD/30fps</strong> — 正直これだとSNSに上げたらかなり粗く見える</li>
+  <li><strong>1080p HD/30fps</strong> — バランスが良い。迷ったらこれでいい</li>
+  <li><strong>1080p HD/60fps</strong> — 動きの多い動画向け。スポーツとかペットとか</li>
+  <li><strong>4K/30fps</strong> — 最高画質だけどファイルサイズがデカい。1分で約170MB</li>
+  <li><strong>4K/60fps</strong> — 容量モンスター。1分で約400MB</li>
+</ul>
+
+<p>SNS共有が目的なら1080p/30fpsで十分。4Kで撮ってもTwitterにアップした時点で1080p以下に再エンコードされるので、ストレージの無駄になることが多い。</p>
+
+<h3>Androidの場合</h3>
+
+<p>メーカーや機種によって設定画面がバラバラなので一概には言えないけど、カメラアプリの設定（歯車アイコン）→ 動画サイズ or 動画品質 あたりで変更できる。Galaxyなら「動画サイズ」、Pixelなら「ビデオ品質」という項目名。ここが「HD」とか「高効率」になってたら、「FHD」か「高品質」に変えておくといい。</p>
+
+<h2>二重圧縮の罠</h2>
+
+<p>ここが一番伝えたいこと。スマホで撮った動画を共有するとき、多くの人がやってしまうのが<strong>二重圧縮</strong>。</p>
+
+<p>どういうことかというと、たとえばこんなパターン：</p>
+
+<ol>
+  <li>スマホで動画を撮る（ここで1回目の圧縮）</li>
+  <li>LINEで友達に送る（LINEが自動で再圧縮。<strong>ここで2回目の圧縮</strong>）</li>
+  <li>友達がその動画をTwitterに投稿する（Twitterが再エンコード。<strong>3回目の圧縮</strong>）</li>
+</ol>
+
+<p>圧縮は重ねるたびに画質が落ちる。不可逆圧縮だから、一度削られた情報は元に戻らない。3回も圧縮されたらそりゃガビガビになる。</p>
+
+<p>自分がユーザーから受け取った「画質が悪い」報告を調べてたとき、元のツイートの動画を最高画質でダウンロードしても360p程度のビットレートしかないケースがあった。で、投稿者のツイートを遡ると「LINEで送ってもらった動画です」と書いてあって、あーこれかと。LINEの時点で相当圧縮されてるのに、そこからさらにTwitterで再圧縮されてたわけだ。</p>
+
+<h2>主要アプリの圧縮事情</h2>
+
+<p>各アプリがどれくらい圧縮するか、知っておくと対策しやすい。</p>
+
+<table class="info-table">
+  <tr><th>アプリ</th><th>圧縮の程度</th><th>高画質オプション</th></tr>
+  <tr><td>LINE</td><td>かなり強い（元の1/5〜1/10程度になる）</td><td>「オリジナル画質」で送信可能</td></tr>
+  <tr><td>Twitter/X</td><td>強い（再エンコード必須、上限1080p）</td><td>なし（自動再エンコード）</td></tr>
+  <tr><td>Instagram</td><td>中程度（ストーリーズは特に強い）</td><td>高画質アップロード設定あり</td></tr>
+  <tr><td>Discord</td><td>無料は8MBまで。超えると圧縮</td><td>Nitroで50MBまで</td></tr>
+  <tr><td>AirDrop</td><td>なし（元データそのまま）</td><td>—</td></tr>
+  <tr><td>Googleフォト共有</td><td>「元の画質」なら圧縮なし</td><td>「元の画質」設定</td></tr>
+</table>
+
+<h2>LINEで動画を送るときの注意</h2>
+
+<p>LINEの通常送信は画質がかなり落ちる。体感で元の動画から7〜8割くらいのデータが削られてる。</p>
+
+<p>対策は簡単で、動画を送信するときに画面下部に「オリジナル画質」というチェックがある。これをオンにするだけ。ただしファイルサイズの上限があって、5分以上の動画は送れなかったりする。長い動画はGoogleドライブやiCloud共有リンクで送る方が確実。</p>
+
+<p>ちなみにLINEのアルバムに動画を保存すると自動圧縮される。これも地味な罠。「LINEアルバムに保存してあるから大丈夫」と思ってる人が結構いるけど、アルバム保存の時点で画質は落ちてる。</p>
+
+<h2>Twitterに高画質で動画を上げるコツ</h2>
+
+<p>Twitterの再エンコードは避けられないけど、劣化を最小限にするためにできることはある。</p>
+
+<h3>元動画の画質を最大にしておく</h3>
+
+<p>当たり前だけど、元が高画質であるほど再エンコード後も品質が保たれる。1080p以上で撮影した動画をそのままアップするのがベスト。前述の通り、LINEやメッセンジャー経由で一回圧縮された動画は使わないこと。</p>
+
+<h3>ブラウザからアップロードする</h3>
+
+<p>地味な話だけど、スマホアプリからよりもPC版ブラウザ（x.com）からアップした方が高画質になるケースがあると言われている。アプリ側で事前リサイズが入る場合があるため。確実な差は検証しきれてないけど、大事な動画はPCからアップする方が無難ではある。</p>
+
+<h3>動画の長さを短くする</h3>
+
+<p>Twitterは長い動画ほどビットレートを絞る傾向がある。2分超えの動画だと1080pが生成されないケースもちらほら見た。高画質を維持したいなら、なるべく短い動画にするのが効果的。</p>
+
+<h2>SNSを通さず高画質で共有する方法</h2>
+
+<p>ぶっちゃけ、画質を最優先にするならSNS経由は避けた方がいい。どのSNSも多かれ少なかれ再圧縮するから。</p>
+
+<h3>クラウドストレージのリンク共有</h3>
+
+<p>GoogleドライブやiCloud Driveに動画をアップして、共有リンクを発行する方法。元データがそのまま保持されるので画質劣化ゼロ。不特定多数に配るのには向かないけど、知り合いに送るならこれが最強。</p>
+
+<h3>AirDrop（iPhone同士）</h3>
+
+<p>iPhone同士ならAirDropが一番手軽。Wi-Fi Directで直接転送するので圧縮なし、通信量もゼロ。近くにいる相手に渡すならこれ一択。</p>
+
+<h3>ファイル転送サービス</h3>
+
+<p>ギガファイル便やfirestorageみたいなファイル転送サービスも選択肢。URLを渡すだけで元データのまま共有できる。ダウンロード期限があるのだけ注意。</p>
+
+<h2>保存した動画をさらに共有するときの注意</h2>
+
+<p>Twitterからダウンロードした動画を別のSNSに上げ直すと、さらにもう1回圧縮される。元の動画 → Twitter圧縮 → ダウンロード → Instagram圧縮、みたいに。当然画質は悪化する一方。</p>
+
+<p>「この動画を保存してInstagramにも投稿したい」という場合は、元の投稿者に元データをもらうのが一番いい。Twitterから保存したものを使い回すのは二重圧縮になるので、できるだけ避けた方がいい。</p>
+
+<p>どうしてもTwitterからダウンロードした動画を使う必要がある場合は、せめて最高画質でダウンロードしておくこと。うちの<a href="../index.html">ダウンロードツール</a>なら画質選択で一番上を選べるので、Twitter上で利用可能な最高品質は確保できる。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="twitter-video-quality-guide.html">Twitter動画の画質と解像度の完全ガイド</a></li>
+    <li><a href="sns-video-reach-tips.html">SNS動画をもっと多くの人に届けるための基礎知識</a></li>
+    <li><a href="browser-video-download-safety.html">ブラウザで動画をダウンロードする際の安全性と注意点</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>

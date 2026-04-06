@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP4だけじゃない — 知っておきたい動画ファイル形式まとめ - Twitter Video Downloader</title>
+<meta name="description" content="MP4、WebM、MKV、AVI、MOV、TSなど主要な動画ファイル形式の特徴と使い分けを比較表付きで解説。開発者目線での選び方も紹介します。">
+<meta property="og:title" content="MP4だけじゃない — 知っておきたい動画ファイル形式まとめ">
+<meta property="og:description" content="MP4、WebM、MKV、AVI、MOV、TSなど主要な動画ファイル形式の特徴と使い分けを解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-formats.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/video-file-formats-guide.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "MP4だけじゃない — 知っておきたい動画ファイル形式まとめ",
+  "datePublished": "2026-03-17",
+  "dateModified": "2026-03-17",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "MP4、WebM、MKV、AVI、MOV、TSなど主要な動画ファイル形式の特徴と使い分けを解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">動画ファイル形式まとめ</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年3月17日</p>
+  <h1>MP4だけじゃない — 知っておきたい動画ファイル形式まとめ</h1>
+  <div class="article-tags">
+    <span class="article-tag">技術解説</span>
+    <span class="article-tag">動画形式</span>
+  </div>
+</div>
+
+<p>ダウンロードツールを作るとき、対応する出力形式をどうするかで結構悩んだ。MP4だけでいいのか、WebMにも対応すべきか、MKVは？AVIは？そのあたりを判断するために各形式の特性をかなり調べまくったので、その時の知見をまとめておく。</p>
+
+<p>先に結論を書いておくと、一般的な用途なら<strong>MP4を選んでおけばまず間違いない</strong>。ただ、他の形式にもそれぞれ存在意義があって、知っておくと「なんでこの形式なんだ？」という場面で困らなくなる。</p>
+
+<h2>そもそも「動画ファイル形式」とは</h2>
+
+<p>最初にここをはっきりさせておきたいんだけど、よく「MP4形式の動画」と言うときの「MP4」は<strong>コンテナフォーマット</strong>のことであって、映像の圧縮方式（コーデック）のことではない。</p>
+
+<p>コンテナは名前の通り「入れ物」で、映像データ、音声データ、字幕データ、メタデータ（タイトルとか著者とか）を1つのファイルにまとめて格納する役割を持つ。同じMP4コンテナでも、中の映像がH.264で圧縮されてるものもあればH.265のものもある。</p>
+
+<p>ffmpegを使い始めた頃、この「コンテナ」と「コーデック」の区別が曖昧で何度かハマった。<code>-c copy</code>（中身のコーデックはそのまま、コンテナだけ変える）と <code>-c:v libx264</code>（映像を再エンコードする）は全然別の処理なのに、どっちも「変換」と呼ばれてて最初は混乱した。</p>
+
+<h2>主要な動画ファイル形式</h2>
+
+<h3>MP4（.mp4）</h3>
+
+<p>言わずと知れた最強の汎用フォーマット。正式名称はMPEG-4 Part 14。</p>
+
+<p>何がすごいかって、<strong>対応デバイスの幅が異常に広い</strong>。Windows、Mac、iPhone、Android、ゲーム機、カーナビ、大体何でも再生できる。Web上でもHTML5の <code>&lt;video&gt;</code> タグでネイティブ再生に対応してる。映像コーデックはH.264が一般的で、最近はH.265やAV1も格納できる。</p>
+
+<p>うちのダウンロードツールでMP4を出力形式にしてるのは、単純にユーザーが一番困らないから。「ダウンロードしたけど再生できません」という問い合わせを限りなくゼロにしたい。MP4ならまずそういうことは起きない。</p>
+
+<h3>WebM（.webm）</h3>
+
+<p>Googleが推進してるオープンフォーマット。映像コーデックはVP8、VP9、またはAV1。音声はVorbisかOpus。</p>
+
+<p>Web向けに最適化されていて、ChromeとFirefoxではネイティブ対応。ファイルサイズがMP4より小さくなるケースもあって、Web上での配信には結構優秀。YouTubeの内部でもWebM（VP9）が使われてる。</p>
+
+<p>ただし<strong>Apple系との相性が悪い</strong>。Safariでの対応が遅れてて、iPhoneで再生できないケースがある。これが痛い。うちのツールでWebM出力を見送ったのはまさにこれが理由で、iPhoneユーザーから「再生できない」と言われるのが目に見えてた。</p>
+
+<h3>MKV（.mkv）</h3>
+
+<p>Matroska Video。名前の由来はロシアのマトリョーシカ人形。「何でも入る」コンテナとして設計されていて、H.264、H.265、VP9、AV1、字幕トラック、複数音声トラック、チャプター情報、ほぼ何でも格納できる。</p>
+
+<p>アニメや映画をコレクションしてる人はMKV推しが多い印象。字幕を複数言語入れたり、音声を吹き替えと原語で切り替えたりできるのが便利。VLCやMPC-HCみたいなデスクトップの動画プレーヤーとの相性が抜群にいい。</p>
+
+<p>ただしスマホやブラウザでの対応はイマイチ。HTML5の <code>&lt;video&gt;</code> タグはMKVに対応してないし、iPhoneのデフォルトプレーヤーでも再生不可。ツール開発の観点からすると、出力形式としては採用しにくい。</p>
+
+<h3>AVI（.avi）</h3>
+
+<p>Microsoftが1992年に開発した歴史あるフォーマット。正式名称はAudio Video Interleave。</p>
+
+<p>正直、2026年にAVIを積極的に使う理由はほぼない。ストリーミングに対応してない、字幕トラックの扱いが貧弱、可変ビットレートとの相性が悪い。ファイルサイズも他のフォーマットに比べて大きくなりがち。</p>
+
+<p>ただ古いデバイスや業務用の機器でAVIしか受け付けないケースが稀にある。あと、録画ソフトのデフォルト出力がAVIになってることもまだある。見かけたらMP4に変換しておけば間違いない。</p>
+
+<h3>MOV（.mov）</h3>
+
+<p>AppleのQuickTimeフォーマット。iPhoneで撮影した動画はデフォルトでMOV。中身はMP4とほぼ同じ（どちらもISO Base Media File Formatがベース）なんだけど、Apple独自の拡張が入ってたりする。</p>
+
+<p>Mac/iPhoneユーザーは意識してなくてもMOVを大量に扱ってるはず。Windowsでも再生自体はできるけど、たまに互換性の問題が出る。特にHEVC（H.265）で撮影したMOVファイルを古いWindows機で開こうとすると再生できないことがある。</p>
+
+<p>ffmpegだと <code>-c copy</code> でMP4に変換するのが一瞬で終わる。コーデックは同じだからコンテナの差し替えだけ。実質的にはMP4とほぼ同じものだと思っていい。</p>
+
+<h3>TS（.ts）</h3>
+
+<p>Transport Stream。HLS配信で使われるセグメントファイルの形式。うちのツールを使ってて一番馴染みがあるのが実はこれ。</p>
+
+<p>TSは放送用に設計されたフォーマットで、エラー耐性が高い。電波が乱れても途中から復帰できるように作られてる。テレビ録画した <code>.ts</code> ファイルを持ってる人もいると思うけど、あれがこれ。</p>
+
+<p>HLSでは動画を数秒ごとのTSセグメントに分割して配信する。うちのツールではこのTSセグメントを全部集めて結合し、ffmpeg.wasmでMP4コンテナに入れ直してる。MP4変換に失敗した場合はTSのまま保存するフォールバックも用意してある。VLCなら.tsファイルもそのまま再生できる。</p>
+
+<h2>ざっくり比較表</h2>
+
+<table class="info-table">
+  <tr><th>形式</th><th>互換性</th><th>Web対応</th><th>特徴</th></tr>
+  <tr><td>MP4</td><td>最強</td><td>全ブラウザ</td><td>迷ったらこれ一択</td></tr>
+  <tr><td>WebM</td><td>良い</td><td>Chrome/Firefox</td><td>Web最適化、Apple弱い</td></tr>
+  <tr><td>MKV</td><td>PC向け</td><td>非対応</td><td>何でも入る万能コンテナ</td></tr>
+  <tr><td>AVI</td><td>古い</td><td>非対応</td><td>レガシー。使う理由薄い</td></tr>
+  <tr><td>MOV</td><td>Apple系</td><td>Safari</td><td>iPhone撮影のデフォルト</td></tr>
+  <tr><td>TS</td><td>限定的</td><td>非対応</td><td>HLS/放送用。VLCで再生可</td></tr>
+</table>
+
+<h2>結局どれを使えばいいのか</h2>
+
+<p>用途別にまとめると：</p>
+
+<ul>
+  <li><strong>SNSにアップする・人に送る</strong> → MP4。考える余地なし</li>
+  <li><strong>Webサイトに埋め込む</strong> → MP4。WebMも併用するとChromeで軽くなる場合がある</li>
+  <li><strong>動画コレクション（映画・アニメ）</strong> → MKV。字幕と複数音声を入れられる</li>
+  <li><strong>iPhone撮影→Mac編集</strong> → MOV。Apple同士ならそのまま使える</li>
+  <li><strong>テレビ録画</strong> → TS。録画ソフトが出力するのでそのまま</li>
+</ul>
+
+<p>動画ダウンロードの文脈で言えば、保存したファイルが<code>.ts</code>になってる場合は、MP4に変換しておくと後で困らない。<a href="../index.html">うちのツール</a>ではHLS動画を自動でMP4変換してるけど、変換に失敗した場合はTSで保存するので、その場合はVLCで再生するか、ffmpegでMP4に変換してほしい。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="hls-mp4-difference.html">HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識</a></li>
+    <li><a href="video-compression-explained.html">動画圧縮の仕組み — なぜファイルサイズは小さくなるのか</a></li>
+    <li><a href="streaming-technology-evolution.html">ストリーミング技術の進化 — 動画配信を支える裏側の仕組み</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>

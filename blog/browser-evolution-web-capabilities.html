@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ブラウザの進化とWebでできることの広がり - Twitter Video Downloader</title>
+<meta name="description" content="静的HTMLからPWAまで、ブラウザの進化の歴史とWebAssembly・Service Worker等の最新Web APIを開発者目線で解説します。">
+<meta property="og:title" content="ブラウザの進化とWebでできることの広がり">
+<meta property="og:description" content="ブラウザの進化の歴史と最新Web APIを開発者目線で解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-browser.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/browser-evolution-web-capabilities.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "ブラウザの進化とWebでできることの広がり",
+  "datePublished": "2026-04-05",
+  "dateModified": "2026-04-05",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "ブラウザの進化の歴史と最新Web APIを開発者目線で解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">ブラウザの進化とWeb技術</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年4月5日</p>
+  <h1>ブラウザの進化とWebでできることの広がり</h1>
+  <div class="article-tags">
+    <span class="article-tag">技術解説</span>
+    <span class="article-tag">Web技術</span>
+  </div>
+</div>
+
+<p>このツールを作っていて一番驚いたのが、「ブラウザだけでここまでできるのか」ということだった。動画のダウンロード、HLSストリーミングのパース、WebAssemblyによる動画変換、Service Workerでのキャッシュ制御。全部ブラウザの中で完結してる。5年前の自分がこれを聞いたら信じなかったと思う。今回は、ブラウザがどうやってここまで進化してきたのかを振り返ってみる。</p>
+
+<h2>静的HTMLの時代</h2>
+
+<p>90年代のWebは本当にシンプルだった。HTMLで文書を書いて、リンクで繋ぐ。それだけ。ページを移動するたびにサーバーから新しいHTMLが丸ごと送られてきて、ブラウザはそれを表示するだけの「文書ビューア」だった。</p>
+
+<p>JavaScriptは1995年にNetscapeに搭載されたけど、初期のJSでできることは本当に限られてた。フォームの入力チェックとか、マウスカーソルに星をついてこさせるとか、そういう小ネタレベル。「アプリケーション」なんて概念はWebには存在しなかった。</p>
+
+<h2>Ajax革命</h2>
+
+<p>2005年頃に登場した<strong>Ajax（Asynchronous JavaScript and XML）</strong>がWebの方向性を大きく変えた。ページ遷移なしでサーバーとデータをやりとりできるようになって、Google Mapsが出てきた時は衝撃だった。地図をドラッグするたびに新しいタイルが読み込まれて、ページのリロードが一切ない。「これ、Webアプリじゃん」と世界中の開発者が気づいた瞬間だったと思う。</p>
+
+<p>ただ、Ajax時代のコードは正直カオスだった。jQueryのコールバック地獄、ブラウザ間の挙動の違い（IE対応...）、状態管理の概念がほぼなくてグローバル変数まみれ。動くけどメンテ不能みたいなコードが量産された時代でもある。</p>
+
+<h2>SPAの台頭</h2>
+
+<p>2010年代に入ると、<strong>SPA（Single Page Application）</strong>の考え方が主流になっていく。React、Angular、Vueといったフレームワークが登場して、ブラウザ側でUIのレンダリングを全部やる設計が一般的になった。</p>
+
+<p>SPAのいいところは、ページ遷移が爆速になること。サーバーからJSON（データだけ）を受け取って、ブラウザ側でHTMLを組み立てる。ネイティブアプリに近い操作感をWebで実現できるようになった。</p>
+
+<p>ただ、SPAにも問題は山ほどあった。初回読み込みが重い、SEOに弱い、JavaScriptが壊れたら何も表示されない。その辺の課題を解決するために、SSR（サーバーサイドレンダリング）とかSSG（静的サイト生成）とか、結局またサーバー側に戻っていくような流れも出てきた。Webの歴史は振り子みたいに行ったり来たりしてて面白い。</p>
+
+<h2>PWA -- Webアプリのネイティブ化</h2>
+
+<p><strong>PWA（Progressive Web App）</strong>は、Webサイトをネイティブアプリっぽく使えるようにする仕組み。ホーム画面に追加できて、オフラインでも動いて、プッシュ通知も送れる。</p>
+
+<p>PWAを支えてるのが<strong>Service Worker</strong>で、これがまた強力。ブラウザとネットワークの間に入って、リクエストをインターセプト（横取り）できる。一度キャッシュしたリソースはオフラインでも返せるし、バックグラウンドで同期処理もできる。</p>
+
+<p>このツールでもService Workerを使っていて、ffmpeg.wasmの約30MBのバイナリを一度キャッシュしたら次回以降はネットワーク不要で読み込めるようにしてる。初回ロードが重い問題の軽減策として、Service Workerなしではやってられなかった。</p>
+
+<h2>ブラウザに搭載された強力なAPI群</h2>
+
+<p>ここからが本題。最近のブラウザには、昔ならネイティブアプリでしかできなかったことを可能にするAPIが山ほど載ってる。自分がこのツールを作る中で実際に使ったものを中心に紹介する。</p>
+
+<h3>WebAssembly（Wasm）</h3>
+<p>C/C++/Rustで書いたコードをブラウザ上でほぼネイティブ速度で実行できる技術。<a href="webassembly-video-processing.html">別記事で詳しく書いた</a>けど、うちのツールではffmpegをWasmにコンパイルしたffmpeg.wasmを使って、ブラウザ内で動画変換をやってる。これがなかったら、サーバーに動画を送らずに変換する仕組みは実現できなかった。</p>
+
+<h3>Web Workers</h3>
+<p>JavaScriptはシングルスレッドなので、重い処理を走らせるとUIがフリーズする。Web Workersを使えばメインスレッドとは別のスレッドで処理を動かせる。ffmpeg.wasmの変換処理をWeb Workerの中で実行することで、変換中もプログレスバーがちゃんと動くし、ユーザーが他の操作をしても画面が固まらない。地味だけど、これがないとUXが壊滅的になる。</p>
+
+<h3>Fetch API / Streams API</h3>
+<p>HLSの動画セグメントを並列ダウンロードするのにFetch APIは必須だった。XMLHttpRequestの時代と比べると、Promiseベースで書けるし、Streams APIと組み合わせればダウンロード進捗もリアルタイムで取れる。TSセグメントを数十本同時にfetchして、返ってきた順にバッファに貯めていく処理は、Fetch+Streamsの組み合わせがなければ相当面倒だったはず。</p>
+
+<h3>Blob / URL.createObjectURL</h3>
+<p>ブラウザ内で生成したバイナリデータ（変換後のMP4ファイル）をユーザーにダウンロードさせるために使う。BlobオブジェクトからURLを生成して、aタグのhrefに突っ込んでclick()する。サーバーを経由せずにファイルをダウンロードさせる基本テクニック。</p>
+
+<h3>IndexedDB</h3>
+<p>ブラウザ内のローカルデータベース。localStorageと違って、バイナリデータの保存もできるし容量も大きい。大容量の動画データの一時保存先として検討したことがある（結局メモリ上でやり切る設計にしたけど）。Webアプリでちゃんとしたデータ永続化が必要な場面では、IndexedDBは強い味方になる。</p>
+
+<h3>WebRTC</h3>
+<p>ブラウザ間のリアルタイム通信。ビデオ通話とかP2Pのファイル共有に使われてる技術。このツールでは直接は使ってないけど、Discordのブラウザ版やGoogle Meetが別途アプリのインストールなしで動いてるのはWebRTCのおかげ。ブラウザだけでビデオ会議ができるって、冷静に考えるとすごいことだ。</p>
+
+<h2>「ブラウザがOS」になる未来</h2>
+
+<p>最近のChromebookなんかは、まさにブラウザがOSそのものとして動いてる。そしてそれが成立してしまう程度には、ブラウザでできることが広がってる。</p>
+
+<ul>
+  <li><strong>文書作成・表計算</strong>: Google Docs / Sheets（もはやOffice並み）</li>
+  <li><strong>画像編集</strong>: Photoshop Web版（WebAssembly製）</li>
+  <li><strong>コード開発</strong>: VS Code for the Web / GitHub Codespaces</li>
+  <li><strong>動画編集</strong>: Clipchampなどブラウザ完結の動画編集ツール</li>
+  <li><strong>3Dモデリング</strong>: WebGLベースのCADツール</li>
+  <li><strong>ゲーム</strong>: Unity/Unreal EngineのWasm出力</li>
+</ul>
+
+<p>File System Access APIを使えばローカルファイルの読み書きもできるし、Web Bluetooth、Web USB、Web Serialで外部デバイスとの通信すらブラウザから直接できる。正直、ネイティブアプリじゃないとできないことの方が少なくなってきてる。</p>
+
+<p>自分がこのツールを最初に設計した時、「ブラウザ内でffmpegを動かして動画変換する」という構想を人に話したら、「それ無理でしょ」と言われた。でも実際にやってみると動いた。しかもそこそこ実用的な速度で。WebAssembly、Service Worker、Web Workers、Fetch API、Blob。これらのAPIを組み合わせたら、数年前なら「サーバーがないと無理」だったことがブラウザだけでできてしまった。</p>
+
+<h2>まだ残ってる課題</h2>
+
+<p>とはいえ、ブラウザの限界がゼロになったわけじゃない。</p>
+
+<ul>
+  <li><strong>メモリ制限</strong>: ブラウザのタブに割り当てられるメモリには上限がある。大きなファイルを扱おうとすると落ちる。ネイティブアプリならOSのメモリをもっと自由に使える</li>
+  <li><strong>GPUアクセス</strong>: WebGPUが策定中だけど、まだネイティブのGPU APIほどの自由度はない。ゲームや機械学習の推論ではここがボトルネックになる</li>
+  <li><strong>ファイルシステム</strong>: File System Access APIは便利だけど、セキュリティ上の制約で使えない場面もある。特にSafariの対応が遅い</li>
+  <li><strong>ブラウザ間の差異</strong>: API自体はあっても、ブラウザによって対応状況がバラバラなことがまだある。特にiOS Safari。開発者の永遠の悩み</li>
+</ul>
+
+<h2>まとめ</h2>
+
+<p>静的HTMLの文書ビューアだったブラウザが、Ajax、SPA、PWAと進化を重ねて、今やWebAssemblyで動画変換までこなすアプリケーション実行環境になった。自分でこのツールを作ってみて痛感したのは、ブラウザの進化って理論的に知ってるのと実際に使い倒すのでは全然印象が違うということ。「え、これブラウザだけで動くの？」という驚きが開発中に何度もあった。ブラウザでできることはまだまだ広がっていくと思うし、その進化の恩恵を活かしたツールをこれからも作っていくつもりです。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="webassembly-video-processing.html">WebAssemblyで実現するブラウザ内動画処理の仕組み</a></li>
+    <li><a href="streaming-technology-evolution.html">ストリーミング技術の進化 — 動画配信を支える裏側の仕組み</a></li>
+    <li><a href="video-compression-explained.html">動画圧縮の仕組み — なぜファイルサイズは小さくなるのか</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>

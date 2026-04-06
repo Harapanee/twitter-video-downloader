@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動画のメタデータとは — ファイルに埋め込まれた見えない情報 - Twitter Video Downloader</title>
+<meta name="description" content="動画ファイルに埋め込まれたメタデータ（EXIF、GPS、カメラ情報）の確認・削除方法を解説。プライバシーリスクとSNS投稿時の注意点も紹介します。">
+<meta property="og:title" content="動画のメタデータとは — ファイルに埋め込まれた見えない情報">
+<meta property="og:description" content="動画ファイルに埋め込まれたメタデータの確認・削除方法とプライバシーリスクを解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-metadata.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/video-metadata-explained.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "動画のメタデータとは — ファイルに埋め込まれた見えない情報",
+  "datePublished": "2026-03-28",
+  "dateModified": "2026-03-28",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "動画ファイルに埋め込まれたメタデータの確認・削除方法とプライバシーリスクを解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">動画のメタデータとは</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年3月28日</p>
+  <h1>動画のメタデータとは — ファイルに埋め込まれた見えない情報</h1>
+  <div class="article-tags">
+    <span class="article-tag">セキュリティ</span>
+    <span class="article-tag">プライバシー</span>
+  </div>
+</div>
+
+<p>動画処理のツールを作ってると、動画ファイルの中に映像と音声以外のデータがいろいろ入ってることに気づく。撮影日時、カメラの機種名、GPS座標——再生画面には一切出てこないけど、ファイルの中にはしっかり残ってる。これが<strong>メタデータ</strong>。自分がffmpegで動画を扱ってるときに「こんなの入ってるのか」と驚いたのがきっかけで、ちょっと調べてみたらプライバシー的にかなり重要な話だった。</p>
+
+<h2>メタデータって何が入ってるのか</h2>
+
+<p>動画ファイルに埋め込まれるメタデータは、思ってる以上に多い。スマホで撮った動画をffmpegで覗くと、だいたいこんな情報が出てくる。</p>
+
+<table class="info-table">
+  <tr><th>カテゴリ</th><th>含まれる情報</th><th>リスク</th></tr>
+  <tr><td>位置情報</td><td>GPS座標（緯度・経度）、高度</td><td>撮影場所＝自宅がバレる可能性</td></tr>
+  <tr><td>日時</td><td>作成日時、更新日時</td><td>行動パターンの推定</td></tr>
+  <tr><td>デバイス情報</td><td>カメラの機種名、メーカー、OS</td><td>端末の特定</td></tr>
+  <tr><td>撮影設定</td><td>解像度、フレームレート、ビットレート</td><td>リスク低（技術情報）</td></tr>
+  <tr><td>ソフトウェア</td><td>エンコーダ名、編集ソフト名</td><td>リスク低</td></tr>
+</table>
+
+<p>写真の世界だとEXIFという規格が有名で、GPSタグ問題は結構前から知られてた。でも動画にも似たような情報が入ってることは、あまり意識されてない気がする。</p>
+
+<h2>実際にメタデータを見てみる</h2>
+
+<p>ffmpegがインストールされてるなら、ターミナルで一発。</p>
+
+<pre><code>ffprobe -v quiet -print_format json -show_format -show_streams video.mp4</code></pre>
+
+<p>これを実行すると、JSONでずらっとメタデータが出てくる。自分が最初にこれを試したときは、iPhoneで撮った動画から <code>com.apple.quicktime.location.ISO6709</code> というキーでGPS座標がそのまま出てきて、Googleマップに貼ったら自宅の位置がピンポイントで表示されて少しゾッとした。</p>
+
+<p>もっと手軽に見たいなら：</p>
+
+<pre><code>ffprobe -v quiet -show_entries format_tags video.mp4</code></pre>
+
+<p>これだとタグ情報だけが出るので見やすい。<code>creation_time</code>（作成日時）、<code>encoder</code>（エンコーダ）、<code>handler_name</code>（ハンドラ名）あたりが表示される。</p>
+
+<h2>GPS情報が残るケース</h2>
+
+<p>スマホのカメラアプリは、設定で位置情報をオンにしてると撮影時のGPS座標を動画に埋め込む。iPhoneだと「設定 → プライバシー → 位置情報サービス → カメラ」で制御できるけど、デフォルトでオンになってることが多い。</p>
+
+<p>問題は、このGPS情報が入ったまま動画をどこかにアップロードした場合。アップロード先がメタデータを消してくれるかどうかはサービス次第。</p>
+
+<h3>SNS別のメタデータ除去状況</h3>
+
+<table class="info-table">
+  <tr><th>サービス</th><th>GPS除去</th><th>EXIF除去</th><th>備考</th></tr>
+  <tr><td>Twitter/X</td><td>除去される</td><td>除去される</td><td>再エンコードされるので元データはほぼ残らない</td></tr>
+  <tr><td>YouTube</td><td>除去される</td><td>除去される</td><td>ただし管理画面で撮影場所を設定すると公開される</td></tr>
+  <tr><td>Instagram</td><td>除去される</td><td>除去される</td><td>写真・動画ともにメタデータはストリップされる</td></tr>
+  <tr><td>LINE</td><td>除去される</td><td>除去される</td><td>送信時に再圧縮。「オリジナル画質」送信時は要注意</td></tr>
+  <tr><td>メール添付</td><td>そのまま残る</td><td>そのまま残る</td><td>一切加工されない。一番危険</td></tr>
+  <tr><td>クラウドストレージ</td><td>そのまま残る</td><td>そのまま残る</td><td>共有リンク経由だとメタデータ付きでダウンロードされる</td></tr>
+</table>
+
+<p>大手SNSは基本的にメタデータを削除してくれる。ただ、メールに添付して送ったりGoogleドライブで共有したりすると、メタデータは丸ごと残る。仕事で動画ファイルをメールでやり取りするとき、撮影場所の情報が入りっぱなしだったりするので地味に危ない。</p>
+
+<h2>メタデータを削除する方法</h2>
+
+<h3>ffmpegで削除</h3>
+
+<p>自分が一番よく使うのはffmpeg。コマンド一発でメタデータを全部消せる。</p>
+
+<pre><code>ffmpeg -i input.mp4 -map_metadata -1 -c copy output.mp4</code></pre>
+
+<p><code>-map_metadata -1</code> が「メタデータを一切コピーしない」の意味。<code>-c copy</code> は映像と音声を再エンコードせずコピーするので、画質の劣化なし・処理も一瞬で終わる。</p>
+
+<p>GPS情報だけ消したい場合はちょっとややこしくて、QuickTimeのlocation tagだけを消す方法もあるんだけど、正直全部消した方が安全だし楽。</p>
+
+<h3>ExifToolで削除</h3>
+
+<p><strong>ExifTool</strong>は写真向けのツールとして有名だけど、動画のメタデータも扱える。</p>
+
+<pre><code>exiftool -all= video.mp4</code></pre>
+
+<p>これで全メタデータが消える。写真と動画を一括処理したいときに便利。ただ、動画のコンテナ内部の一部メタデータ（ストリーム情報とか）はExifToolだと消しきれないこともあるので、完全にクリーンにしたいならffmpegの方が確実。</p>
+
+<h3>スマホの設定で撮影時から対策する</h3>
+
+<p>そもそも撮影時に位置情報を埋め込まないのが一番簡単。</p>
+
+<ul>
+  <li><strong>iPhone</strong>: 設定 → プライバシーとセキュリティ → 位置情報サービス → カメラ → 「なし」</li>
+  <li><strong>Android</strong>: カメラアプリの設定 → 「位置情報タグ」をオフ（メーカーによって場所が違う）</li>
+</ul>
+
+<p>ただし、位置情報をオフにすると写真アプリの「撮影地マップ」みたいな機能が使えなくなる。個人的には位置情報はオンのまま撮影して、外部に共有するときだけメタデータを消す運用にしてる。</p>
+
+<h2>メタデータで実際に起きた問題</h2>
+
+<p>「そんなの気にしすぎでは」と思うかもしれないけど、実際にメタデータが原因で問題になったケースはいくつかある。</p>
+
+<ul>
+  <li><strong>2012年、McAfeeの創業者ジョン・マカフィーの所在地バレ</strong>: 中米で逃亡中だったマカフィー氏を取材したジャーナリストが、iPhoneで撮った写真をそのままブログに載せた。EXIF内のGPS情報からグアテマラの具体的な住所が特定されて、翌日に逮捕</li>
+  <li><strong>写真・動画のGPS情報からストーカー被害</strong>: SNSにアップした画像のメタデータから自宅を特定されるケースは、日本でも複数報告されてる。今は主要SNSがメタデータを消してくれるから減ったけど、個人ブログやファイル共有サービス経由だと今でもリスクがある</li>
+</ul>
+
+<h2>このサイトでのメタデータの扱い</h2>
+
+<p>うちのサイトでTwitter動画をダウンロードする場合、取得されるのはTwitterが再エンコードした後の動画。元の投稿者がスマホで撮った動画にGPS情報が入っていたとしても、Twitterのサーバー側で再エンコードされる過程でメタデータは除去されてる。なので、ダウンロードしたMP4に位置情報が残ってることは基本的にない。</p>
+
+<p>ただ、エンコーダ情報（<code>Lavf</code> とか）や作成日時みたいな技術的なメタデータは残ってることがある。気になる人は、上に書いたffmpegのコマンドで消してから使うのがいいと思う。</p>
+
+<h2>まとめ</h2>
+
+<p>動画ファイルには映像と音声以外にもいろんな情報が埋まってる。特にGPS情報は撮影場所がピンポイントで分かるので、扱いに注意が必要。大手SNSは自動で除去してくれるけど、メール添付やクラウド共有ではそのまま残る。</p>
+
+<p>自分はffmpegで動画を処理するようになって初めてメタデータの存在をちゃんと意識するようになった。<code>ffprobe</code> で一度自分の動画のメタデータを覗いてみると、何が入ってるか分かって良いと思う。知った上で対処するのが一番確実。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="browser-video-download-safety.html">ブラウザで動画をダウンロードする際の安全性と注意点</a></li>
+    <li><a href="smartphone-video-sharing-tips.html">スマホで撮った動画を高画質のまま共有するコツ</a></li>
+    <li><a href="video-compression-explained.html">動画圧縮の仕組み — なぜファイルサイズは小さくなるのか</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>

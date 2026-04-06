@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動画圧縮の仕組み — なぜファイルサイズは小さくなるのか - Twitter Video Downloader</title>
+<meta name="description" content="動画圧縮の仕組みをI-frame/P-frame/B-frameの概念からわかりやすく解説。コーデックの役割や圧縮率と画質のトレードオフについても開発者目線で紹介します。">
+<meta property="og:title" content="動画圧縮の仕組み — なぜファイルサイズは小さくなるのか">
+<meta property="og:description" content="動画圧縮の仕組みをI-frame/P-frame/B-frameの概念からわかりやすく解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-compression.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/video-compression-explained.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "動画圧縮の仕組み — なぜファイルサイズは小さくなるのか",
+  "datePublished": "2026-03-06",
+  "dateModified": "2026-03-06",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "動画圧縮の仕組みをI-frame/P-frame/B-frameの概念からわかりやすく解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">動画圧縮の仕組み</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年3月6日</p>
+  <h1>動画圧縮の仕組み — なぜファイルサイズは小さくなるのか</h1>
+  <div class="article-tags">
+    <span class="article-tag">技術解説</span>
+    <span class="article-tag">動画</span>
+  </div>
+</div>
+
+<p>ffmpeg.wasmでHLS→MP4の変換処理を実装してるとき、ふと「そもそも動画の圧縮ってどういう原理で成り立ってるんだ？」と気になった。コマンドを叩けば変換できるのは分かってるけど、中で何が起きてるのか全然理解してなかった。で、調べてみたらこれが思った以上に面白かったので、自分の理解を整理する意味も込めて書いてみる。</p>
+
+<h2>そもそも無圧縮の動画はどれくらいデカいのか</h2>
+
+<p>まず前提として、圧縮しない動画がどれだけ巨大か知っておくといい。1080pの動画はフレーム1枚あたり約6MB。これが毎秒30枚（30fps）来るから、<strong>1秒で約180MB</strong>。1分で約10.8GB。10分の動画で100GB超え。こんなもの普通にストリーミングできるわけがない。</p>
+
+<p>つまり動画圧縮は「あったらいいな」じゃなくて、ないと成り立たない技術。YouTubeもNetflixもTwitterも、動画圧縮なしには存在できない。</p>
+
+<h2>空間圧縮 — 1枚の画像の中の冗長さを削る</h2>
+
+<p>動画は画像の集まりなので、まずは静止画1枚を圧縮する仕組みから。</p>
+
+<p>考えてみると、1枚の画像の中には同じような色のピクセルが大量にある。青空の部分なんて、隣接するピクセルの色はほぼ同じだ。これを1ピクセルずつ律儀に記録するのは無駄。「この辺り一帯、だいたい同じ青です」とまとめて表現すれば、データ量はかなり減る。</p>
+
+<p>技術的にはDCT（離散コサイン変換）という処理で画像を周波数成分に変換して、人間の目に見えにくい高周波成分（細かいディテール）を削ぎ落とす。JPEG圧縮と基本原理は同じ。この「1フレーム内で完結する圧縮」が空間圧縮（Intra-frame compression）と呼ばれるやつ。</p>
+
+<h2>時間圧縮 — フレーム間の「変わってない部分」を省く</h2>
+
+<p>動画圧縮の真骨頂はこっち。</p>
+
+<p>たとえばニュース番組を想像してほしい。アナウンサーが喋ってるだけの映像で、背景のスタジオセットはずっと同じ。変わってるのはアナウンサーの口元くらいだ。だったら、全フレームを丸ごと記録するよりも「前のフレームからここだけ変わりました」という差分だけ記録した方が圧倒的に効率がいい。</p>
+
+<p>これが時間圧縮（Inter-frame compression）の考え方。そしてこの仕組みを実現するために、I-frame、P-frame、B-frameという3種類のフレームが使い分けられている。</p>
+
+<h2>I-frame、P-frame、B-frame</h2>
+
+<h3>I-frame（キーフレーム）</h3>
+
+<p><strong>I-frame（Intra-coded frame）</strong>はそのフレーム単体で完結する画像。前後のフレームを参照せず、1枚の画像としてフル圧縮される。JPEGと同じ要領。動画の中に定期的に挿入されていて、ここが「起点」になる。</p>
+
+<p>なぜ全部を差分にしないのかというと、シークの問題がある。動画のシークバーを動かして途中から再生するとき、差分だけしかなかったら最初のフレームからずっと計算し直さないといけない。I-frameがあるおかげで、そこを起点に再生を始められる。ffmpegで動画を切り出す時に <code>-ss</code> で指定した位置と実際のカット位置がズレることがあるんだけど、あれはI-frameの位置に引っ張られてるから。実装してて「なんで微妙にズレるんだ」と悩んだのを覚えている。</p>
+
+<h3>P-frame（前方予測）</h3>
+
+<p><strong>P-frame（Predicted frame）</strong>は直前のI-frameまたはP-frameを参照して、「前のフレームからの差分」だけを持つ。背景が動いてないシーンだと差分がほとんどないから、データ量がめちゃくちゃ小さくなる。</p>
+
+<p>さらに賢いのが「動き補償」という技術で、オブジェクトが移動した場合に「このブロックが右に3ピクセル動きました」というベクトル情報だけを記録する。画像データを丸ごと持たなくていいから効率がいい。</p>
+
+<h3>B-frame（双方向予測）</h3>
+
+<p><strong>B-frame（Bi-directional predicted frame）</strong>は前後両方のフレームを参照する。前のフレームだけじゃなく未来のフレームも見て最適な予測を行うから、P-frameよりもさらにデータ量を減らせる。ただし前後の参照が必要なので、エンコードもデコードも計算コストが高い。</p>
+
+<p>典型的なGOP（Group of Pictures）構造はこんな感じ：</p>
+
+<p><code>I B B P B B P B B P B B I ...</code></p>
+
+<p>I-frameを起点に、P-frameとB-frameが並んで、次のI-frameまでが1つのグループ。このGOPの長さ（I-frame間隔）がエンコード設定でよく話題になるやつ。間隔が長いほど圧縮効率は上がるけど、シーク精度が落ちるしエラー耐性も下がる。</p>
+
+<h2>コーデックの役割</h2>
+
+<p>ここまで説明した空間圧縮と時間圧縮のアルゴリズムをまとめて実装したのが<strong>コーデック</strong>。encode（符号化）とdecode（復号）を合わせてcodec。主要なやつを簡単に紹介しておく。</p>
+
+<ul>
+  <li><strong>H.264（AVC）</strong> — 2003年登場、今でも最も広く使われてるコーデック。Twitterの動画もほぼこれ。対応デバイスが圧倒的に多い</li>
+  <li><strong>H.265（HEVC）</strong> — H.264の後継。同画質でファイルサイズが約40〜50%減。ただしライセンス問題がゴタゴタしてて、普及が遅れた</li>
+  <li><strong>VP9</strong> — Googleが開発したオープンソースのコーデック。YouTubeで使われてる。H.265に近い性能でロイヤリティフリー</li>
+  <li><strong>AV1</strong> — Alliance for Open Mediaが開発。VP9やH.265を超える圧縮効率を目指してる。Netflix、YouTube、Twitchが採用を進めてて、今後の主流になりそう</li>
+</ul>
+
+<p>コーデックは世代が新しいほど圧縮効率が良くなるけど、その分エンコードに必要な計算量も増える。H.264のエンコードは一瞬で終わるけど、AV1のエンコードは同じ動画でも何倍も時間がかかる。ffmpeg.wasmで変換処理を組むときにも、コーデック選択は処理速度に直結するので結構シビアな判断になった。</p>
+
+<h2>コンテナとコーデックは別物</h2>
+
+<p>ここは混同しやすいポイントなので補足。MP4はコーデックじゃなくて<strong>コンテナ</strong>（入れ物）。コーデックで圧縮された映像データと音声データを1つのファイルにまとめるための箱だ。</p>
+
+<p>同じMP4ファイルでも、中身がH.264の場合もあればH.265の場合もある。逆に同じH.264で圧縮された動画でも、MP4コンテナに入ってることもあればMKVコンテナに入ってることもある。ffmpegで <code>-c copy</code>（コーデック変換なし）と <code>-c:v libx264</code>（H.264で再エンコード）の違いがまさにこれで、前者はコンテナだけ変えて中身はそのまま、後者はコーデックレベルで再圧縮してる。</p>
+
+<h2>圧縮率と画質のトレードオフ</h2>
+
+<p>圧縮はタダじゃない。ファイルサイズを小さくすればするほど、画質は落ちる。不可逆圧縮である以上、削った情報は戻ってこない。</p>
+
+<p>ffmpegだと <code>-crf</code>（Constant Rate Factor）パラメータでこのバランスを調整する。値が小さいほど高画質・大容量、大きいほど低画質・小容量。H.264なら18〜23あたりが「見た目ほぼ劣化なし」と言われる範囲。Twitterにアップした動画が劣化するのは、Twitter側が帯域とストレージを節約するために結構攻めたCRF値（つまり強い圧縮）で再エンコードしてるからだと推測される。</p>
+
+<h2>まとめ</h2>
+
+<p>動画圧縮は、空間的な冗長さ（1枚の画像内の似たピクセル）と時間的な冗長さ（フレーム間の変化がない部分）を削ることでファイルサイズを劇的に削減してる。I-frame、P-frame、B-frameの使い分けとコーデックのアルゴリズムがこれを実現していて、技術の進歩で同じ画質をどんどん小さいファイルで表現できるようになってきてる。</p>
+
+<p>自分はffmpeg.wasmの実装を通じてこの辺の理解が一気に深まったけど、普段動画を見てる分にはこの仕組みが意識されることはない。それくらい透明にうまく動いてるということだと思う。動画をダウンロードしたり変換したりする時に「なんでファイルサイズが変わるのか」を知っておくと、設定の意味が分かるようになるので損はないはず。ちなみにうちの<a href="../index.html">ダウンロードツール</a>ではHLS→MP4変換時にコーデック変換なし（リムックス）で処理してるので、画質劣化なくファイル形式だけ変換できる。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="twitter-video-quality-guide.html">Twitter動画の画質と解像度の完全ガイド</a></li>
+    <li><a href="hls-mp4-difference.html">HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識</a></li>
+    <li><a href="video-file-formats-guide.html">MP4だけじゃない — 知っておきたい動画ファイル形式まとめ</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>

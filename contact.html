@@ -21,6 +21,13 @@
 
 <div id="site-header"></div>
 
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="index.html">ホーム</a></li>
+    <li><span class="current">お問い合わせ</span></li>
+  </ol>
+</nav>
+
 <main class="page-container">
 <div class="content-card">
 
@@ -31,11 +38,16 @@
   <h2>運営者情報</h2>
   <table class="info-table">
     <tr><th>運営</th><td>HaraTeck合同会社</td></tr>
+    <tr><th>代表者</th><td>原 宏大</td></tr>
+    <tr><th>所在地</th><td>〒574-0044 大阪府大東市諸福5-20-6</td></tr>
     <tr><th>メール</th><td><a href="mailto:k.hara@harateck.com">k.hara@harateck.com</a></td></tr>
   </table>
 </div>
 
-<form class="contact-form" id="contactForm">
+<form class="contact-form" id="contactForm" action="https://formsubmit.co/k.hara@harateck.com" method="POST">
+  <input type="hidden" name="_subject" value="[Twitter Video Downloader] お問い合わせ">
+  <input type="hidden" name="_captcha" value="false">
+  <input type="hidden" name="_next" value="https://twitter-video-downloader.vercel.app/contact.html?sent=1">
   <div class="form-group">
     <label for="contact-name">お名前</label>
     <input type="text" id="contact-name" name="name" placeholder="山田 太郎" required>
@@ -64,6 +76,7 @@
   </div>
 
   <button type="submit" class="form-submit-btn">送信する</button>
+  <p class="form-note" style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">フォームが動作しない場合は、直接 <a href="mailto:k.hara@harateck.com">k.hara@harateck.com</a> までメールをお送りください。</p>
 </form>
 
 <h2>お問い合わせの前に</h2>
@@ -83,14 +96,10 @@
 <script src="components.js"></script>
 <script>
 document.getElementById('contactForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const name = document.getElementById('contact-name').value;
-  const email = document.getElementById('contact-email').value;
-  const type = document.getElementById('contact-type').value;
-  const message = document.getElementById('contact-message').value;
-  const subject = encodeURIComponent('[Twitter Video Downloader] ' + type + 'のお問い合わせ');
-  const body = encodeURIComponent('お名前: ' + name + '\nメールアドレス: ' + email + '\n種類: ' + type + '\n\n' + message);
-  window.location.href = 'mailto:k.hara@harateck.com?subject=' + subject + '&body=' + body;
+  const form = this;
+  const btn = form.querySelector('.form-submit-btn');
+  btn.textContent = '送信中...';
+  btn.disabled = true;
 });
 </script>
 </body>

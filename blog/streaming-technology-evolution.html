@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ストリーミング技術の進化 — 動画配信を支える裏側の仕組み - Twitter Video Downloader</title>
+<meta name="description" content="プログレッシブダウンロードからHLS/DASHまで、動画ストリーミング技術の進化を解説。Netflix・YouTube・Twitchの裏側の仕組みも紹介します。">
+<meta property="og:title" content="ストリーミング技術の進化 — 動画配信を支える裏側の仕組み">
+<meta property="og:description" content="動画ストリーミング技術の進化とNetflix・YouTube・Twitchの裏側の仕組みを解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://twitter-video-downloader.vercel.app/images/og-blog-streaming.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/streaming-technology-evolution.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "ストリーミング技術の進化 — 動画配信を支える裏側の仕組み",
+  "datePublished": "2026-03-22",
+  "dateModified": "2026-03-22",
+  "author": {
+    "@type": "Person",
+    "name": "原 宏大",
+    "jobTitle": "代表 / エンジニア",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "HaraTeck合同会社"
+    }
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "動画ストリーミング技術の進化とNetflix・YouTube・Twitchの裏側の仕組みを解説します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<nav class="breadcrumb" aria-label="パンくずリスト">
+  <ol>
+    <li><a href="../index.html">ホーム</a></li>
+    <li><a href="../blog.html">ブログ</a></li>
+    <li><span class="current">ストリーミング技術の進化</span></li>
+  </ol>
+</nav>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年3月22日</p>
+  <h1>ストリーミング技術の進化 — 動画配信を支える裏側の仕組み</h1>
+  <div class="article-tags">
+    <span class="article-tag">技術解説</span>
+    <span class="article-tag">ストリーミング</span>
+  </div>
+</div>
+
+<p>このサイトでTwitter動画をMP4に変換する機能を作るとき、HLS.jsというライブラリをかなり触った。そのときに「そもそもストリーミングってどうやって動いてるんだ」という部分を結構深掘りしたので、今回はその裏側の仕組みについて書いてみる。Netflix、YouTube、Twitchみたいな大規模サービスがどうやって動画を届けてるのか。知ると意外と面白い世界。</p>
+
+<h2>プログレッシブダウンロード — 最初の「ストリーミングっぽいやつ」</h2>
+
+<p>昔のWeb動画は<strong>プログレッシブダウンロード</strong>という方式が主流だった。MP4ファイルをHTTPサーバーに置いて、ブラウザがダウンロードしながら再生する。2000年代後半くらいまでは、だいたいこれ。</p>
+
+<p>仕組みは超シンプルで、ファイルの先頭からバイト単位でダウンロードしていって、バッファが溜まったら再生が始まる。ただ、これには致命的な問題がある。</p>
+
+<ul>
+  <li><strong>画質が固定</strong>: 回線が遅くても高画質のファイルを無理やりダウンロードしようとするので、バッファリング（くるくる）地獄になる</li>
+  <li><strong>シーク（早送り）が重い</strong>: ファイルの途中にジャンプしたいとき、そこまでの全データがダウンロード済みじゃないと飛べない（MP4のメタデータ配置にもよるけど）</li>
+  <li><strong>サーバー負荷</strong>: 最初の10秒だけ見て離脱するユーザーにも、大きなファイル全体の転送が始まる</li>
+</ul>
+
+<p>YouTubeが初期の頃このバッファリング問題にどれだけ悩んだかは有名な話。動画が止まるたびにユーザーが離脱するので、再生体験の向上は配信サービスにとって死活問題だった。</p>
+
+<h2>HLS/DASH — 「アダプティブ」の登場</h2>
+
+<p>そこで出てきたのが<strong>アダプティブビットレートストリーミング</strong>。回線の状態に合わせてリアルタイムに画質を切り替える技術。代表格がAppleの<strong>HLS（HTTP Live Streaming）</strong>と、国際規格の<strong>MPEG-DASH</strong>。</p>
+
+<h3>基本的な仕組み</h3>
+
+<p>どちらもやってることの核は同じ。</p>
+
+<ol>
+  <li>1本の動画を数秒（HLSなら通常6秒、DASHなら2〜4秒）のセグメントに分割する</li>
+  <li>各セグメントを複数の画質（360p、720p、1080pなど）でエンコードしておく</li>
+  <li>プレイリスト（HLSなら<code>.m3u8</code>、DASHなら<code>.mpd</code>）にセグメントの一覧を書く</li>
+  <li>プレーヤーが回線速度を測りながら、次のセグメントをどの画質で取るか判断する</li>
+</ol>
+
+<p>つまり、Wi-Fiで安定してるときは1080pのセグメントを取りに行って、電車でトンネルに入ったら360pに落とす、みたいなことがセグメント単位でできる。プログレッシブダウンロードとは根本的に設計思想が違う。</p>
+
+<h3>HLSが勝った理由</h3>
+
+<p>HLSとDASH、スペック上はDASHの方が柔軟で規格としても洗練されてる。でも現実にはHLSが圧倒的に普及した。これは自分がHLS.jsを触ってるときにも感じたことなんだけど、理由はわりとシンプル。</p>
+
+<ul>
+  <li><strong>iPhoneのネイティブサポート</strong>: iOSのSafariはHLSをブラウザネイティブで再生できる。DASHは追加のJSライブラリが必要。モバイルファーストの時代にこの差はデカすぎた</li>
+  <li><strong>Appleのエコシステム</strong>: App Storeに出すアプリで10分以上の動画を配信するならHLS必須、というルールがあった（今は緩和されてるけど）</li>
+  <li><strong>実装のシンプルさ</strong>: M3U8はただのテキストファイルで、人間が読める。MPDはXMLベースで正直読む気が失せる</li>
+  <li><strong>HLS.jsの存在</strong>: Safari以外のブラウザでもHLSを再生できるJSライブラリ。これが優秀すぎて、HLSだけ実装すれば全プラットフォーム対応できるようになった</li>
+</ul>
+
+<p>自分がこのサイトのプレーヤー周りを実装したとき、最初はDASHも対応しようかと思った。でもHLS.jsだけで十分だった。Twitter動画はHLS配信だし、HLS.jsのAPIが使いやすくて、セグメントのダウンロード状況をフックできるのがダウンローダー開発にはありがたかった。</p>
+
+<h2>LL-HLS — 低遅延の追求</h2>
+
+<p>通常のHLSはセグメントが6秒なので、ライブ配信だと最低でも数十秒の遅延が発生する。YouTubeの生配信でコメントがズレるのはこのせい。</p>
+
+<p>2020年にAppleが発表した<strong>LL-HLS（Low-Latency HLS）</strong>はこの遅延を2秒前後まで縮める技術。セグメントの一部（パーシャルセグメント）をエンコード完了前から配信し始めることで、「細切れのさらに細切れ」を先行配信する。HTTP/2のサーバープッシュやプリロードヒントも活用して、プレーヤーが次のデータを待つ時間を極限まで削る。</p>
+
+<p>TwitchやYouTube Liveが独自の低遅延技術を使ってたのに対して、LL-HLSはオープンな規格として策定された。ただ、CDN側の対応が必要だったりで、普及にはまだ時間がかかってるのが現状。</p>
+
+<h2>CDN — 物理的な距離の問題</h2>
+
+<p>ストリーミング技術の話でCDN（Content Delivery Network）を無視するわけにはいかない。どれだけプロトコルが賢くても、サーバーが地球の裏側にあったらそれだけで遅延が増える。光の速度は超えられない。</p>
+
+<h3>CDNの仕組み</h3>
+
+<p>CDNは世界中にエッジサーバーを配置して、ユーザーの近くのサーバーからコンテンツを配信する。Netflixの場合、<strong>Open Connect</strong>というCDNを自前で構築していて、ISP（プロバイダ）のデータセンター内に物理的にサーバーを設置してる。ぶっちゃけ力業なんだけど、これが一番確実。</p>
+
+<p>YouTubeもGoogleのグローバルネットワークを使って同じことをやってる。動画の人気度に応じてキャッシュの配置を最適化してて、バズった動画ほどより多くのエッジにコピーが行き渡る仕組み。</p>
+
+<h3>各サービスの構成</h3>
+
+<table class="info-table">
+  <tr><th>サービス</th><th>配信方式</th><th>CDN</th><th>特徴</th></tr>
+  <tr><td>Netflix</td><td>DASH（一部HLS）</td><td>Open Connect（自前）</td><td>ISP内にサーバー設置、エンコードに異常にこだわる</td></tr>
+  <tr><td>YouTube</td><td>DASH + 独自拡張</td><td>Google CDN（自前）</td><td>VP9/AV1コーデック積極採用、ABRアルゴリズムが賢い</td></tr>
+  <tr><td>Twitch</td><td>HLS（低遅延独自拡張）</td><td>Amazonインフラ</td><td>ライブ配信に特化、遅延2秒以下を実現</td></tr>
+  <tr><td>Twitter/X</td><td>HLS + MP4</td><td>Akamai等</td><td>短尺動画中心、画質バリアントは少なめ</td></tr>
+</table>
+
+<h2>HLS.jsを触って分かったこと</h2>
+
+<p>実際にHLS.jsでプレーヤー的な処理を実装してみて、いくつか気づいたことがある。</p>
+
+<p><strong>セグメントの切れ目は完璧ではない</strong>。HLSのセグメント境界で音声が微妙にプチっとなることがある。これはエンコード時のキーフレーム配置とセグメント長の兼ね合いで起きる問題で、プレーヤー側で吸収するしかない。HLS.jsはこの辺のバッファ管理がよくできてて、普通に再生する分にはほとんど気にならないレベルに抑えてくれる。</p>
+
+<p><strong>ABR（アダプティブビットレート）のアルゴリズムは奥が深い</strong>。HLS.jsにはデフォルトのABRロジックが入ってるけど、カスタマイズもできる。帯域推定をどうするか、バッファ量をどのくらい維持するか、画質を上げるタイミングと下げるタイミングの非対称性（下げるのは早く、上げるのは慎重に）とか、考え出すとキリがない。</p>
+
+<p><strong>エラーハンドリングが肝</strong>。ネットワークが不安定な環境だとセグメントのダウンロードがタイムアウトすることがある。HLS.jsはリトライ機構を持ってるけど、何回リトライするか、バックオフをどう設定するかで再生体験が大きく変わる。</p>
+
+<h2>まとめ</h2>
+
+<p>プログレッシブダウンロードから始まって、HLS/DASHでアダプティブ配信になり、LL-HLSで低遅延まで来た。動画配信の歴史は「いかにバッファリングを減らすか」の歴史と言っていい。</p>
+
+<p>個人的にはHLS.jsを触ったことでストリーミングの仕組みがかなりクリアになった。普段何気なくYouTubeやNetflixを見てるけど、裏側では毎秒レベルで帯域推定して画質切り替えて、CDNから最適な経路でセグメントを配信して...という処理が走ってる。この技術スタックの上に「動画を見る」というシンプルな体験が成り立ってるのは、エンジニアとして素直にすごいなと思う。</p>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+<div class="author-bio">
+  <div class="author-avatar">原</div>
+  <div class="author-info">
+    <h4>原 宏大</h4>
+    <p class="author-role">HaraTeck合同会社 代表 / エンジニア</p>
+    <p>Webエンジニア。動画処理技術とブラウザAPIに興味があり、Twitter Video Downloaderの開発・運営を行っています。</p>
+  </div>
+</div>
+
+<div class="related-articles">
+  <h3>関連記事</h3>
+  <ul>
+    <li><a href="hls-mp4-difference.html">HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識</a></li>
+    <li><a href="webassembly-video-processing.html">WebAssemblyで実現するブラウザ内動画処理の仕組み</a></li>
+    <li><a href="browser-evolution-web-capabilities.html">ブラウザの進化とWebでできることの広がり</a></li>
+  </ul>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>
