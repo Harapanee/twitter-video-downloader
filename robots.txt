@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://twitter-video-downloader.vercel.app/sitemap.xml

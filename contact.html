@@ -23,7 +23,15 @@
 <div class="content-card">
 
 <h1>お問い合わせ</h1>
-<p>Twitter Video Downloaderに関するご質問、ご要望、不具合のご報告は、以下のフォームよりお気軽にお寄せください。内容を確認の上、できる限り迅速にご対応いたします。</p>
+<p>Twitter Video Downloaderに関するご質問、ご要望、不具合のご報告は、以下のフォームまたはメールにてお気軽にお寄せください。内容を確認の上、できる限り迅速にご対応いたします。</p>
+
+<div class="operator-info">
+  <h2>運営者情報</h2>
+  <table class="info-table">
+    <tr><th>運営</th><td>HaraTeck合同会社</td></tr>
+    <tr><th>メール</th><td><a href="mailto:contact@harateck.com">contact@harateck.com</a></td></tr>
+  </table>
+</div>
 
 <form class="contact-form" id="contactForm">
   <div class="form-group">
@@ -74,9 +82,13 @@
 <script>
 document.getElementById('contactForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  // TODO: フォーム送信サービスのエンドポイントを設定してください
-  // 例: fetch('https://formspree.io/f/YOUR_FORM_ID', { method: 'POST', body: new FormData(this) })
-  alert('お問い合わせありがとうございます。\n現在フォーム送信先を設定中です。');
+  const name = document.getElementById('contact-name').value;
+  const email = document.getElementById('contact-email').value;
+  const type = document.getElementById('contact-type').value;
+  const message = document.getElementById('contact-message').value;
+  const subject = encodeURIComponent('[Twitter Video Downloader] ' + type + 'のお問い合わせ');
+  const body = encodeURIComponent('お名前: ' + name + '\nメールアドレス: ' + email + '\n種類: ' + type + '\n\n' + message);
+  window.location.href = 'mailto:contact@harateck.com?subject=' + subject + '&body=' + body;
 });
 </script>
 </body>

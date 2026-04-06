@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja" data-page="blog">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識 - Twitter Video Downloader</title>
+<meta name="description" content="HLS（HTTP Live Streaming）とMP4の違いを初心者向けに解説。それぞれの特徴、メリット・デメリット、どちらが適しているかを詳しく説明します。">
+<meta property="og:title" content="HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識">
+<meta property="og:description" content="動画形式のHLSとMP4の違いを初心者向けにわかりやすく解説します。">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ja_JP">
+<link rel="canonical" href="https://twitter-video-downloader.vercel.app/blog/hls-mp4-difference.html">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='20' width='100' height='100' fill='%231d9bf0'/><path d='M30 68V32l40 18z' fill='white'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9324532404045955"
+     crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../common.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識",
+  "datePublished": "2026-04-05",
+  "dateModified": "2026-04-05",
+  "author": {
+    "@type": "Organization",
+    "name": "HaraTeck合同会社"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Twitter Video Downloader"
+  },
+  "description": "HLSとMP4の違いを初心者向けに解説。それぞれの特徴とメリット・デメリットを説明します。"
+}
+</script>
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="page-container">
+<div class="content-card">
+
+<div class="article-header">
+  <p class="article-date">2026年4月5日</p>
+  <h1>HLSとMP4の違いをわかりやすく解説 — 動画形式の基礎知識</h1>
+  <div class="article-tags">
+    <span class="article-tag">技術解説</span>
+    <span class="article-tag">動画形式</span>
+  </div>
+</div>
+
+<p>動画をダウンロードしようとすると「HLS」「MP4」「M3U8」といった用語を目にすることがあります。「形式って何が違うの？」「どっちがいいの？」という疑問を持つ方も多いのではないでしょうか。この記事では、特にTwitterの動画ダウンロードで登場するHLSとMP4の違いを、できるだけわかりやすく解説します。</p>
+
+<h2>MP4とは？ — 最も一般的な動画ファイル形式</h2>
+
+<p><strong>MP4（MPEG-4 Part 14）</strong>は、世界で最も広く使われている動画ファイル形式です。拡張子は <code>.mp4</code> で、パソコン、スマートフォン、タブレットなど、ほぼすべてのデバイスで再生できます。</p>
+
+<h3>MP4の特徴</h3>
+<ul>
+  <li><strong>1つのファイルで完結</strong>: 動画データと音声データが1つのファイルにまとめられている</li>
+  <li><strong>高い互換性</strong>: Windows、Mac、iOS、Android、ほぼすべての環境で再生可能</li>
+  <li><strong>効率的な圧縮</strong>: H.264やH.265といったコーデックにより、高画質を維持しながらファイルサイズを小さくできる</li>
+  <li><strong>保存・共有が簡単</strong>: 1つのファイルなので、USBメモリやクラウドストレージでの保存・共有が容易</li>
+</ul>
+
+<p>日常的に「動画ファイル」と呼ばれるものの多くがMP4形式です。スマートフォンで撮影した動画も、多くの場合MP4形式で保存されます。</p>
+
+<h2>HLSとは？ — ストリーミング配信のための技術</h2>
+
+<p><strong>HLS（HTTP Live Streaming）</strong>は、Apple社が2009年に開発したストリーミング動画配信のためのプロトコル（通信方式）です。MP4が「ファイル形式」であるのに対し、HLSは「配信方式」という点が根本的に異なります。</p>
+
+<h3>HLSの仕組み</h3>
+
+<p>HLSでは、動画は以下のような仕組みで配信されます。</p>
+
+<ol>
+  <li><strong>動画をセグメントに分割</strong>: 1本の動画を数秒ごとの小さな断片（セグメント、通常は <code>.ts</code> ファイル）に分割する</li>
+  <li><strong>プレイリストファイルの作成</strong>: セグメントの順番やURLをリスト化した <code>.m3u8</code> ファイル（マニフェストファイル）を作成する</li>
+  <li><strong>適応的ビットレート配信</strong>: 異なる画質（解像度・ビットレート）のバリエーションを用意し、視聴者のネットワーク速度に応じて最適な画質を自動選択する</li>
+</ol>
+
+<h3>HLSの特徴</h3>
+<ul>
+  <li><strong>安定したストリーミング</strong>: ネットワーク速度が変動しても、画質を自動調整して途切れにくい再生を実現</li>
+  <li><strong>複数画質への対応</strong>: 360p、480p、720p、1080pなど、複数の画質バリエーションを同時に提供できる</li>
+  <li><strong>配信コストの最適化</strong>: 視聴者が必要な分だけデータを送信するため、帯域幅を効率的に使える</li>
+  <li><strong>ライブ配信にも対応</strong>: リアルタイムの動画配信にも使用できる</li>
+</ul>
+
+<h2>HLSとMP4の比較表</h2>
+
+<table class="info-table">
+  <tr><th>項目</th><th>MP4</th><th>HLS</th></tr>
+  <tr><td>種類</td><td>ファイル形式</td><td>配信プロトコル</td></tr>
+  <tr><td>拡張子</td><td>.mp4</td><td>.m3u8（プレイリスト）+ .ts（セグメント）</td></tr>
+  <tr><td>ファイル構成</td><td>1ファイルで完結</td><td>複数ファイルに分割</td></tr>
+  <tr><td>画質選択</td><td>固定（1つの画質）</td><td>複数画質を提供可能</td></tr>
+  <tr><td>オフライン再生</td><td>そのまま再生可能</td><td>変換が必要</td></tr>
+  <tr><td>デバイス互換性</td><td>ほぼ全デバイス対応</td><td>ブラウザ・専用プレーヤーが必要</td></tr>
+  <tr><td>主な用途</td><td>動画の保存・共有</td><td>ストリーミング配信</td></tr>
+</table>
+
+<h2>Twitterでの動画配信方式</h2>
+
+<p>Twitterは動画の配信に複数の方式を使い分けています。</p>
+
+<h3>直接MP4配信</h3>
+<p>一部の動画は、<code>video.twimg.com</code> ドメインからMP4ファイルとして直接配信されます。この場合、URLに直接アクセスすればMP4ファイルをそのままダウンロードできます。比較的短い動画や低解像度の動画で使用されることが多い形式です。</p>
+
+<h3>HLS配信</h3>
+<p>長い動画や高解像度の動画、またはミラーサイト経由の動画はHLS形式で配信されることが多くあります。HLS配信の場合、動画は多数のセグメントに分割されているため、ダウンロードするには以下の処理が必要になります。</p>
+<ol>
+  <li>M3U8プレイリストを取得して、すべてのセグメントのURLを特定する</li>
+  <li>すべてのセグメント（.tsファイル）をダウンロードする</li>
+  <li>セグメントを正しい順序で結合する</li>
+  <li>結合したデータをMP4形式に変換する（任意だが推奨）</li>
+</ol>
+
+<h2>HLS動画をMP4に変換する方法</h2>
+
+<p>HLS形式の動画を保存するには、MP4への変換が便利です。方法はいくつかあります。</p>
+
+<h3>方法1: オンラインツールを使う</h3>
+<p><a href="../index.html">Twitter Video Downloader</a>のようなオンラインツールでは、HLSからMP4への変換を自動で行います。URLを入力するだけで、変換処理を意識することなくMP4ファイルをダウンロードできます。</p>
+
+<h3>方法2: ffmpegを使う（上級者向け）</h3>
+<p>コマンドラインツールのffmpegを使えば、M3U8プレイリストのURLからMP4ファイルを直接作成できます。技術的な知識が必要ですが、最も柔軟な方法です。</p>
+
+<h3>方法3: ブラウザ拡張機能を使う</h3>
+<p>動画ダウンロード用のブラウザ拡張機能の中には、HLS動画の検出と変換に対応しているものがあります。ただし、拡張機能のセキュリティには注意が必要です（詳しくは<a href="browser-video-download-safety.html">ブラウザで動画をダウンロードする際の安全性と注意点</a>の記事をご覧ください）。</p>
+
+<h2>M3U8ファイルとは？</h2>
+
+<p>HLSについて調べると必ず出てくるのが <code>.m3u8</code> ファイルです。これはHLSのプレイリストファイルで、UTF-8でエンコードされたテキストファイルです。中身はシンプルなテキストで、以下のような情報が含まれています。</p>
+
+<ul>
+  <li>利用可能な画質のリスト（マスタープレイリストの場合）</li>
+  <li>各セグメントのURL（メディアプレイリストの場合）</li>
+  <li>セグメントの再生時間</li>
+  <li>暗号化情報（暗号化されている場合）</li>
+</ul>
+
+<p>ブラウザで動画をストリーミング再生する際、まずこのM3U8ファイルを読み込み、そこに記載されたセグメントを順番にダウンロード・再生していくことで、スムーズな動画視聴を実現しています。</p>
+
+<h2>まとめ</h2>
+
+<p>MP4とHLSはそれぞれ異なる目的で使われる技術です。</p>
+
+<ul>
+  <li><strong>MP4</strong>は動画の保存や共有に最適なファイル形式。どのデバイスでも再生できる互換性の高さが魅力</li>
+  <li><strong>HLS</strong>はストリーミング配信に最適な配信方式。適応的な画質調整により安定した視聴体験を提供</li>
+  <li>Twitter動画を保存する場合は、<strong>最終的にMP4形式にするのがベスト</strong>。HLS配信の動画でも、適切なツールを使えば自動的にMP4に変換できる</li>
+</ul>
+
+<div class="blog-nav">
+  <a href="../blog.html">記事一覧に戻る</a>
+  <a href="../index.html">ダウンロードツールを使う</a>
+</div>
+
+</div>
+</main>
+
+<div id="site-footer"></div>
+<script src="../components.js"></script>
+</body>
+</html>
