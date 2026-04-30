@@ -460,6 +460,11 @@
           <code class="url-example">https://www.gofile.beauty/3v8ej</code>
         </div>
         <div class="url-type">
+          <span class="url-host">twimg.file-photo.com 等 *.file-photo.com</span>
+          <span class="url-desc">短縮URLに対応 (暗号化APIから動画情報を取得 / HLS形式・画質選択可能)</span>
+          <code class="url-example">https://twimg.file-photo.com/axYu1ri</code>
+        </div>
+        <div class="url-type">
           <span class="url-host">その他の動画サイト (自動検出)</span>
           <span class="url-desc">同様の構造を持つサイトを自動検出。ページ内のHLS/MP4動画を探して対応します。</span>
           <code class="url-example">https://any-site.com/video/...</code>
@@ -519,6 +524,7 @@
   const DIRECT_VIDEO_HOSTS = ['video.twimg.com'];
   const TWEET_HOSTS = ['x.com', 'twitter.com', 'mobile.twitter.com'];
   const GOFILE_BEAUTY_HOSTS = ['www.gofile.beauty', 'gofile.beauty'];
+  const FILE_PHOTO_HOST_RE = /\.file-photo\.com$/;
 
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
   const localProxyBase = isServed ? location.origin + '/proxy?url=' : null;
@@ -821,6 +827,177 @@
     return { url: m[1], name: code };
   }
 
+  // file-photo.com uses an ECDH+AES-GCM encrypted API. The flow:
+  //   1. POST /d170545d {cpk: <hexECDHpubkey>}  → returns server pubkey + AES-encrypted token
+  //   2. Derive AES-GCM key via ECDH P-256 → SHA-256
+  //   3. POST /<endpoint> with x-token header, body = AES-encrypted({q, b, m})
+  //   4. Decrypt response body with same key
+  // All requests must go through our /proxy?forward=1 because the API is
+  // same-origin only (CORS allow-origin == twimg.file-photo.com).
+  async function parseFilePhoto(url) {
+    if (!localProxyBase) {
+      throw new Error('file-photo.com の動画はローカルサーバー経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください');
+    }
+    if (!globalThis.crypto?.subtle) {
+      throw new Error('このブラウザは Web Crypto API に対応していません');
+    }
+
+    const parsed = new URL(url);
+    const apiOrigin = parsed.origin;
+    const code = parsed.pathname.replace(/^\/+/, '').split('/')[0];
+    if (!code) throw new Error('file-photo.comのURL形式が正しくありません');
+
+    const fpHexToBuf = (h) => {
+      const out = new Uint8Array(h.length / 2);
+      for (let i = 0; i < h.length; i += 2) out[i / 2] = parseInt(h.substring(i, i + 2), 16);
+      return out;
+    };
+    const fpBufToHex = (buf) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    const fpB64ToBuf = (b64) => {
+      const bin = atob(b64);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    };
+    const fpBufToB64 = (buf) => {
+      const u = new Uint8Array(buf);
+      let s = '';
+      for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]);
+      return btoa(s);
+    };
+
+    async function fpAesEncrypt(key, plain) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, new TextEncoder().encode(plain));
+      const buf = new Uint8Array(enc);
+      const data = buf.slice(0, buf.length - 16);
+      const tag = buf.slice(buf.length - 16);
+      return { d: fpBufToB64(data), v: fpBufToB64(iv), t: fpBufToB64(tag) };
+    }
+    async function fpAesDecrypt(key, obj) {
+      const d = fpB64ToBuf(obj.d), v = fpB64ToBuf(obj.v), t = fpB64ToBuf(obj.t);
+      const ct = new Uint8Array(d.length + t.length);
+      ct.set(d, 0); ct.set(t, d.length);
+      const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: v, tagLength: 128 }, key, ct);
+      return new TextDecoder().decode(dec);
+    }
+
+    function fpProxyUrl(u) {
+      return localProxyBase + encodeURIComponent(u) + '&forward=1';
+    }
+
+    // Init: ECDH handshake
+    const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveKey', 'deriveBits']);
+    const cpk = fpBufToHex(await crypto.subtle.exportKey('raw', kp.publicKey));
+    const initResp = await fetch(fpProxyUrl(apiOrigin + '/d170545d'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cpk }),
+    });
+    if (!initResp.ok) throw new Error('file-photo.com: 認証の初期化に失敗しました');
+    const initJson = await initResp.json();
+    if (!initJson.k) throw new Error('file-photo.com: 認証応答が不正です');
+    const serverPub = await crypto.subtle.importKey('raw', fpHexToBuf(initJson.k), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const sharedBits = await crypto.subtle.deriveBits({ name: 'ECDH', public: serverPub }, kp.privateKey, 256);
+    const hash = await crypto.subtle.digest('SHA-256', sharedBits);
+    const aesKey = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    const tokenJson = await fpAesDecrypt(aesKey, { d: initJson.d, v: initJson.v, t: initJson.t });
+    const { token } = JSON.parse(tokenJson);
+
+    async function fpCall(path, query, body, method) {
+      const wrapped = { q: query || {}, b: body || null, m: (method || 'GET').toUpperCase() };
+      const enc = await fpAesEncrypt(aesKey, JSON.stringify(wrapped));
+      const r = await fetch(fpProxyUrl(apiOrigin + path), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-token': token },
+        body: JSON.stringify(enc),
+      });
+      if (!r.ok) throw new Error(`file-photo.com: API ${path} HTTP ${r.status}`);
+      const j = await r.json();
+      if (j && j.d && j.v && j.t) {
+        const dec = await fpAesDecrypt(aesKey, j);
+        return JSON.parse(dec);
+      }
+      return j;
+    }
+
+    // Resolve short link → video info
+    const stripped = code.replace(/a/, '');
+    const father = await fpCall('/3e20aac1', { externalLinks: stripped }, null, 'GET');
+    const resolvedLink = (father && father.data) || stripped;
+
+    let info = await fpCall('/7404b196', { link: resolvedLink, domain: 'file-photo.com' }, null, 'GET');
+    let netDiskInfo = info?.data?.netDiskInfo || null;
+
+    // If folder, pick first non-folder item and re-fetch
+    if (netDiskInfo?.isFolder) {
+      const list = await fpCall('/3b63b6de', { externalLinks: resolvedLink, pageNo: 1, pageSize: 10, sortOrder: '2' }, null, 'GET');
+      const items = list?.data?.list || [];
+      const first = items.find(it => !it.isFolder);
+      if (!first) throw new Error('file-photo.com: フォルダ内に動画が見つかりません');
+      const itemInfo = await fpCall('/7404b196', { link: first.landingPage, domain: 'file-photo.com' }, null, 'GET');
+      netDiskInfo = itemInfo?.data?.netDiskInfo || null;
+    }
+
+    if (!netDiskInfo || !netDiskInfo.fileUrl) {
+      throw new Error('file-photo.com: 動画URLが取得できませんでした');
+    }
+
+    const baseName = (netDiskInfo.name || code).replace(/\.[^.]+$/, '') || 'file_photo_video';
+    return { playlistUrl: netDiskInfo.fileUrl, name: baseName };
+  }
+
+  async function loadFilePhotoVideo(url) {
+    const info = await parseFilePhoto(url);
+
+    // Reuse twimg-image-style master playlist parsing for quality selection
+    hlsData = { playlistUrl: info.playlistUrl, baseUrl: info.playlistUrl.replace(/\/[^/]*$/, '/'), qualities: [], directMp4Url: null, name: info.name };
+
+    try {
+      const plResp = await proxyFetch(info.playlistUrl);
+      if (plResp.ok) {
+        const plText = await plResp.text();
+        const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
+            const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
+            const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
+            const path = lines[i + 1];
+            if (path && !path.startsWith('#')) {
+              hlsData.qualities.push({ name: resMatch ? resMatch[1] : 'Unknown', bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0, path });
+            }
+          }
+        }
+        hlsData.qualities.sort((a, b) => b.bandwidth - a.bandwidth);
+      }
+    } catch (e) { console.debug('[filePhoto] master playlist fetch failed:', e); }
+
+    if (hlsData.qualities.length > 0) {
+      qualitySelect.innerHTML = '';
+      for (const q of hlsData.qualities) {
+        const opt = document.createElement('option');
+        opt.value = q.path;
+        opt.textContent = q.name + (q.bandwidth ? ` (${Math.round(q.bandwidth / 1000)}kbps)` : '');
+        qualitySelect.appendChild(opt);
+      }
+      qualityArea.style.display = 'flex';
+    }
+
+    videoArea.classList.add('visible');
+    if (Hls.isSupported()) {
+      hlsInstance = new Hls();
+      hlsInstance.loadSource(info.playlistUrl);
+      hlsInstance.attachMedia(videoPlayer);
+      hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) showError('HLS再生エラー: ' + data.type);
+      });
+    } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+      videoPlayer.src = info.playlistUrl;
+    } else {
+      throw new Error('このブラウザはHLS再生に対応していません');
+    }
+  }
+
   async function extractVideoFromTweet(user, tweetId) {
     const apiUrl = `https://api.fxtwitter.com/${user}/status/${tweetId}`;
 
@@ -887,6 +1064,8 @@
         const info = await parseGofileBeauty(result.url);
         currentUrl = info.url;
         await loadDirectVideo(info.url);
+      } else if (FILE_PHOTO_HOST_RE.test(result.host)) {
+        await loadFilePhotoVideo(result.url);
       } else if (KNOWN_HLS_HOSTS.includes(result.host)) {
         await loadTwimgImageVideo(result.url);
       } else if (DIRECT_VIDEO_HOSTS.includes(result.host) || isDirectVideoUrl(result.url)) {

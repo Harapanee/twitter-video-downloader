@@ -67,7 +67,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
         super().end_headers()
 
@@ -88,8 +88,56 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
         if parsed.path == '/convert':
             self._handle_convert()
+        elif parsed.path == '/proxy':
+            params = urllib.parse.parse_qs(parsed.query)
+            if 'forward' in params and params.get('url'):
+                self._handle_proxy_forward_post(parsed, params)
+            else:
+                self.send_error(400, 'POST /proxy requires forward=1 and url=...')
         else:
             self.send_error(404)
+
+    def _handle_proxy_forward_post(self, parsed, params):
+        target_url = params['url'][0]
+        try:
+            target_parsed = urllib.parse.urlparse(target_url)
+        except Exception:
+            self.send_error(400, 'Invalid URL')
+            return
+        if target_parsed.scheme not in ('http', 'https'):
+            self.send_error(400, 'Only http and https URLs are allowed')
+            return
+        if BLOCKED_HOSTS_RE.match(target_parsed.hostname or ''):
+            self.send_error(403, f'Host not allowed: {target_parsed.hostname}')
+            return
+
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length) if content_length else b''
+
+        fwd_headers = {
+            'Content-Type': self.headers.get('Content-Type', 'application/json'),
+            'Origin': f'{target_parsed.scheme}://{target_parsed.hostname}',
+            'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/',
+        }
+        for h in ('x-token', 'x-shield-bypass'):
+            v = self.headers.get(h)
+            if v:
+                fwd_headers[h] = v
+
+        try:
+            resp = _proxy_session.post(target_url, data=body, headers=fwd_headers, timeout=30)
+        except Exception as e:
+            self.send_error(502, f'Upstream error: {e}')
+            return
+
+        self.send_response(resp.status_code)
+        self.send_header('Content-Type', resp.headers.get('Content-Type', 'application/json'))
+        self.send_header('Content-Length', str(len(resp.content)))
+        self.end_headers()
+        try:
+            self.wfile.write(resp.content)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def _handle_proxy(self, parsed):
         params = urllib.parse.parse_qs(parsed.query)

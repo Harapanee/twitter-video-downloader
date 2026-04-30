@@ -27,7 +27,8 @@ ALLOWED_HOSTS_RE = re.compile(
     r'|[a-z0-9-]+\.io-d\.cc'
     r'|api\.fxtwitter\.com'
     r'|(www\.)?gofile\.beauty'
-    r'|[a-z0-9-]+\.slicedrive\.com)$'
+    r'|[a-z0-9-]+\.slicedrive\.com'
+    r'|[a-z0-9-]+\.file-photo\.com)$'
 )
 
 USER_AGENT = (
@@ -154,7 +155,19 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        """Download HLS segments, concatenate, and serve with Content-Disposition."""
+        """POST forwarding (forward=1 query) or HLS segment download.
+
+        forward=1 mode: forward the request body unchanged to the target URL
+        and return the response body. Used for APIs that require encrypted
+        request/response bodies (e.g. file-photo.com).
+        """
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+
+        if 'forward' in params and params.get('url'):
+            self._handle_forward_post(params)
+            return
+
         content_length = int(self.headers.get('Content-Length', 0))
         raw_body = self.rfile.read(content_length)
         content_type = self.headers.get('Content-Type', '')
