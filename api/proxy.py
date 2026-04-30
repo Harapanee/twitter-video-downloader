@@ -76,6 +76,58 @@ class handler(BaseHTTPRequestHandler):
         self._send_cors_headers()
         self.end_headers()
 
+    def _handle_forward_post(self, params):
+        target_url = params['url'][0]
+        try:
+            target_parsed = urllib.parse.urlparse(target_url)
+        except Exception:
+            self._send_error(400, 'Invalid URL')
+            return
+        if target_parsed.scheme not in ('http', 'https'):
+            self._send_error(400, 'Only http and https URLs are allowed')
+            return
+        hostname = target_parsed.hostname or ''
+        if not ALLOWED_HOSTS_RE.match(hostname):
+            self._send_error(403, f'Host not allowed: {hostname}')
+            return
+
+        content_length = int(self.headers.get('Content-Length') or 0)
+        body = self.rfile.read(content_length) if content_length else b''
+
+        fwd_headers = {
+            'Content-Type': self.headers.get('Content-Type', 'application/json'),
+            'Origin': f'{target_parsed.scheme}://{target_parsed.hostname}',
+            'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/',
+            'User-Agent': USER_AGENT,
+            'Accept': '*/*',
+        }
+        for h in ('x-token', 'x-shield-bypass'):
+            v = self.headers.get(h)
+            if v:
+                fwd_headers[h] = v
+
+        req = urllib.request.Request(target_url, data=body, headers=fwd_headers, method='POST')
+        try:
+            resp = urllib.request.urlopen(req, timeout=30)
+            status = resp.status
+            resp_body = resp.read()
+            resp_ct = resp.headers.get('Content-Type', 'application/json')
+            resp.close()
+        except urllib.error.HTTPError as e:
+            status = e.code
+            resp_body = e.read()
+            resp_ct = e.headers.get('Content-Type', 'application/json')
+        except Exception as e:
+            self._send_error(502, f'Upstream error: {e}')
+            return
+
+        self.send_response(status)
+        self.send_header('Content-Type', resp_ct)
+        self.send_header('Content-Length', str(len(resp_body)))
+        self._send_cors_headers()
+        self.end_headers()
+        self.wfile.write(resp_body)
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
