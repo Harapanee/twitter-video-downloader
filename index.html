@@ -455,6 +455,11 @@
           <code class="url-example">https://videy.vedio.cc/...</code>
         </div>
         <div class="url-type">
+          <span class="url-host">www.gofile.beauty</span>
+          <span class="url-desc">短縮URLに対応 (Bloggerフィードから動画を抽出)</span>
+          <code class="url-example">https://www.gofile.beauty/3v8ej</code>
+        </div>
+        <div class="url-type">
           <span class="url-host">その他の動画サイト (自動検出)</span>
           <span class="url-desc">同様の構造を持つサイトを自動検出。ページ内のHLS/MP4動画を探して対応します。</span>
           <code class="url-example">https://any-site.com/video/...</code>
@@ -513,6 +518,7 @@
   const KNOWN_HLS_HOSTS = ['video.twimg-image.cc', 'video.twimg-com.com', 'videy.vedio.cc', 'gofile.fun800.click', 'cdn.videy-com.cc'];
   const DIRECT_VIDEO_HOSTS = ['video.twimg.com'];
   const TWEET_HOSTS = ['x.com', 'twitter.com', 'mobile.twitter.com'];
+  const GOFILE_BEAUTY_HOSTS = ['www.gofile.beauty', 'gofile.beauty'];
 
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
   const localProxyBase = isServed ? location.origin + '/proxy?url=' : null;
@@ -775,6 +781,46 @@
     return segments;
   }
 
+  async function parseGofileBeauty(url) {
+    // gofile.beauty is a Blogger site. Short URLs like /3v8ej return a 404 page,
+    // so we look up the post via the Blogger feed search API and extract the
+    // <source src="..."> from the post's HTML content.
+    const parsed = new URL(url);
+    const cleanPath = parsed.pathname.replace(/^\/+/, '').replace(/\.html$/i, '');
+    const code = cleanPath.split('/').pop();
+    if (!code) throw new Error('gofile.beautyのURL形式が正しくありません');
+
+    const feedUrl = `https://www.gofile.beauty/feeds/posts/default?alt=json&q=${encodeURIComponent(code)}`;
+    let resp;
+    try {
+      resp = await fetchWithProxy(feedUrl);
+    } catch (e) {
+      throw new Error('gofile.beauty: フィードの取得に失敗しました');
+    }
+
+    let data;
+    try {
+      data = JSON.parse(await resp.text());
+    } catch (e) {
+      throw new Error('gofile.beauty: フィードの解析に失敗しました');
+    }
+
+    const entries = (data && data.feed && data.feed.entry) || [];
+    let entry = entries.find(e => {
+      const t = e && e.title && e.title.$t;
+      return t && t.toLowerCase() === code.toLowerCase();
+    });
+    if (!entry && entries.length === 1) entry = entries[0];
+    if (!entry) throw new Error('gofile.beauty: 該当する動画が見つかりません');
+
+    const content = (entry.content && entry.content.$t) || '';
+    const m = content.match(/<source[^>]+src="([^"]+)"/i)
+           || content.match(/<video[^>]+src="([^"]+)"/i);
+    if (!m) throw new Error('gofile.beauty: 動画URLを抽出できませんでした');
+
+    return { url: m[1], name: code };
+  }
+
   async function extractVideoFromTweet(user, tweetId) {
     const apiUrl = `https://api.fxtwitter.com/${user}/status/${tweetId}`;
 
@@ -837,6 +883,10 @@
         const videoInfo = await extractVideoFromTweet(result.tweetUser, result.tweetId);
         currentUrl = videoInfo.url;
         await loadDirectVideo(videoInfo.url);
+      } else if (GOFILE_BEAUTY_HOSTS.includes(result.host)) {
+        const info = await parseGofileBeauty(result.url);
+        currentUrl = info.url;
+        await loadDirectVideo(info.url);
       } else if (KNOWN_HLS_HOSTS.includes(result.host)) {
         await loadTwimgImageVideo(result.url);
       } else if (DIRECT_VIDEO_HOSTS.includes(result.host) || isDirectVideoUrl(result.url)) {
