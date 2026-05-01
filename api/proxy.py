@@ -26,6 +26,7 @@ ALLOWED_HOSTS_RE = re.compile(
     r'|[a-z0-9-]+\.akamaized\.net'
     r'|[a-z0-9-]+\.fun800\.click'
     r'|[a-z0-9-]+\.fun800\.cc'
+    r'|[a-z0-9-]+\.gofileapp\.com'
     r'|[a-z0-9-]+\.io-d\.cc'
     r'|api\.fxtwitter\.com'
     r'|(www\.)?gofile\.beauty'
