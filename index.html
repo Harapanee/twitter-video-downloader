@@ -741,8 +741,8 @@
     });
 
     const playlistUrl = info.playlistUrl;
-    const baseUrl = playlistUrl.replace(/\/[^/]*$/, '/');
-    const qualities = await fetchMasterPlaylistQualities(playlistUrl);
+    const baseUrl = playlistUrl ? playlistUrl.replace(/\/[^/]*$/, '/') : '';
+    const qualities = playlistUrl ? await fetchMasterPlaylistQualities(playlistUrl) : [];
 
     return {
       playlistUrl,
@@ -952,12 +952,16 @@
       netDiskInfo = itemInfo?.data?.netDiskInfo || null;
     }
 
-    if (!netDiskInfo || !netDiskInfo.fileUrl) {
+    if (!netDiskInfo || (!netDiskInfo.fileUrl && !netDiskInfo.originUrl)) {
       throw new Error(`${errorPrefix}: 動画URLが取得できませんでした`);
     }
 
     const baseName = (netDiskInfo.name || code).replace(/\.[^.]+$/, '') || defaultName;
-    return { playlistUrl: netDiskInfo.fileUrl, directMp4Url: null, name: baseName };
+    return {
+      playlistUrl: netDiskInfo.fileUrl || null,
+      directMp4Url: netDiskInfo.originUrl || null,
+      name: baseName,
+    };
   }
 
   async function parseFilePhoto(url) {
