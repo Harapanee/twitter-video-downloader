@@ -2,7 +2,7 @@
 // Unlike Python serverless functions, Edge Functions support streaming (no 4.5MB limit)
 export const config = { runtime: 'edge' };
 
-const ALLOWED_HOSTS_RE = /^(video\.twimg\.com|video\.twimg-image\.cc|video\.twimg-com\.com|videy\.vedio\.cc|[a-z0-9-]+\.videy-com\.cc|[a-z0-9-]+\.twimg\.com|[a-z0-9-]+\.twimg-com\.com|[a-z0-9-]+\.akamaized\.net|[a-z0-9-]+\.fun800\.click|[a-z0-9-]+\.fun800\.cc|[a-z0-9-]+\.io-d\.cc|api\.fxtwitter\.com|(www\.)?gofile\.beauty|[a-z0-9-]+\.slicedrive\.com|[a-z0-9-]+\.file-photo\.com)$/;
+const ALLOWED_HOSTS_RE = /^(video\.twimg\.com|video\.twimg-image\.cc|video\.twimg-com\.com|videy\.vedio\.cc|[a-z0-9-]+\.twimg-image\.cc|[a-z0-9-]+\.vedio\.cc|[a-z0-9-]+\.videy-com\.cc|[a-z0-9-]+\.twimg\.com|[a-z0-9-]+\.twimg-com\.com|[a-z0-9-]+\.akamaized\.net|[a-z0-9-]+\.fun800\.click|[a-z0-9-]+\.fun800\.cc|[a-z0-9-]+\.io-d\.cc|api\.fxtwitter\.com|(www\.)?gofile\.beauty|[a-z0-9-]+\.slicedrive\.com|[a-z0-9-]+\.file-photo\.com)$/;
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 

@@ -18,6 +18,8 @@ ALLOWED_HOSTS_RE = re.compile(
     r'|video\.twimg-image\.cc'
     r'|video\.twimg-com\.com'
     r'|videy\.vedio\.cc'
+    r'|[a-z0-9-]+\.twimg-image\.cc'
+    r'|[a-z0-9-]+\.vedio\.cc'
     r'|[a-z0-9-]+\.videy-com\.cc'
     r'|[a-z0-9-]+\.twimg\.com'
     r'|[a-z0-9-]+\.twimg-com\.com'

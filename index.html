@@ -692,75 +692,64 @@
     throw new Error('ページの取得に失敗しました。しばらく待ってから再試行してください。\nヒント: python3 server.py でローカルサーバーを起動し http://localhost:8888 を開いてください');
   }
 
-  async function parseTwimgImagePage(url) {
-    const html = await fetchPageHtml(url);
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const nuxtScript = doc.getElementById('__NUXT_DATA__');
-    if (!nuxtScript) throw new Error('動画データが見つかりません');
-
-    const data = JSON.parse(nuxtScript.textContent);
-
-    let playlistUrl = null;
-    let directMp4Url = null;
-    let videoName = null;
-    let videoFileName = null;
-    for (const item of data) {
-      if (typeof item === 'string') {
-        if (item.endsWith('/playlist.m3u8')) playlistUrl = item;
-        if (!directMp4Url && item.match(/^https?:\/\/.*\.mp4$/)) directMp4Url = item;
-        if (!videoFileName && !item.startsWith('http') && item.match(/\.(mp4|mov|avi|mkv|webm)$/i)) {
-          videoFileName = item.replace(/\.[^.]+$/, '');
-        }
-        if (!videoName && !item.startsWith('http') && !item.includes('/') && !item.includes('.') && item.length > 1 && item.length < 50) {
-          videoName = item;
-        }
-      }
-    }
-
-    if (!playlistUrl && !directMp4Url) throw new Error('動画データが見つかりません');
-
+  async function fetchMasterPlaylistQualities(playlistUrl) {
     const qualities = [];
-    let baseUrl = '';
-
-    if (playlistUrl) {
-      try {
-        const plResp = await proxyFetch(playlistUrl);
-        if (plResp.ok) {
-          const plText = await plResp.text();
-          const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
-
-          baseUrl = playlistUrl.replace(/\/[^/]*$/, '/');
-
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
-              const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
-              const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
-              const path = lines[i + 1];
-              if (path && !path.startsWith('#')) {
-                qualities.push({
-                  name: resMatch ? resMatch[1] : 'Unknown',
-                  bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0,
-                  path: path,
-                });
-              }
+    try {
+      const plResp = await proxyFetch(playlistUrl);
+      if (plResp.ok) {
+        const plText = await plResp.text();
+        const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
+            const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
+            const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
+            const path = lines[i + 1];
+            if (path && !path.startsWith('#')) {
+              qualities.push({
+                name: resMatch ? resMatch[1] : 'Unknown',
+                bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0,
+                path: path,
+              });
             }
           }
-
-          qualities.sort((a, b) => b.bandwidth - a.bandwidth);
         }
-      } catch (e) {
-        console.debug('[parseTwimgImagePage] playlist fetch failed:', e);
+        qualities.sort((a, b) => b.bandwidth - a.bandwidth);
       }
+    } catch (e) {
+      console.debug('[fetchMasterPlaylistQualities] failed:', e);
     }
+    return qualities;
+  }
+
+  async function parseTwimgImagePage(url) {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    // Map known hosts to the API's domain field
+    const hostDomainMap = {
+      'video.twimg-image.cc': 'twimg-image.cc',
+      'video.twimg-com.com': 'twimg-com.com',
+      'videy.vedio.cc': 'vedio.cc',
+      'cdn.videy-com.cc': 'videy-com.cc',
+      'gofile.fun800.click': 'fun800.click',
+    };
+    const apiDomain = hostDomainMap[host] || host.split('.').slice(-2).join('.');
+
+    const info = await parseShieldVideo(url, {
+      domain: apiDomain,
+      errorPrefix: host,
+      defaultName: 'twitter_video',
+    });
+
+    const playlistUrl = info.playlistUrl;
+    const baseUrl = playlistUrl.replace(/\/[^/]*$/, '/');
+    const qualities = await fetchMasterPlaylistQualities(playlistUrl);
 
     return {
       playlistUrl,
       baseUrl,
       qualities,
-      directMp4Url,
-      name: videoFileName || videoName || 'twitter_video',
+      directMp4Url: info.directMp4Url || null,
+      name: info.name || 'twitter_video',
     };
   }
 
@@ -827,150 +816,169 @@
     return { url: m[1], name: code };
   }
 
-  // file-photo.com uses an ECDH+AES-GCM encrypted API. The flow:
-  //   1. POST /d170545d {cpk: <hexECDHpubkey>}  → returns server pubkey + AES-encrypted token
+  // file-photo.com / video.twimg-image.cc / videy.vedio.cc and friends share an
+  // ECDH+AES-GCM encrypted "API shield". The flow:
+  //   1. POST /e5ea2057 {cpk: <hexECDHpubkey>}  → returns server pubkey + AES-encrypted token
   //   2. Derive AES-GCM key via ECDH P-256 → SHA-256
   //   3. POST /<endpoint> with x-token header, body = AES-encrypted({q, b, m})
   //   4. Decrypt response body with same key
   // All requests must go through our /proxy?forward=1 because the API is
-  // same-origin only (CORS allow-origin == twimg.file-photo.com).
-  async function parseFilePhoto(url) {
+  // same-origin only (no CORS allow-origin for cross-origin browser callers).
+  async function createShieldClient(apiOrigin, errorPrefix) {
     if (!localProxyBase) {
-      throw new Error('file-photo.com の動画はローカルサーバー経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください');
+      throw new Error(`${errorPrefix} の動画はローカルサーバー経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください`);
     }
     if (!globalThis.crypto?.subtle) {
       throw new Error('このブラウザは Web Crypto API に対応していません');
     }
 
-    const parsed = new URL(url);
-    const apiOrigin = parsed.origin;
-    const code = parsed.pathname.replace(/^\/+/, '').split('/')[0];
-    if (!code) throw new Error('file-photo.comのURL形式が正しくありません');
-
-    const fpHexToBuf = (h) => {
+    const hexToBuf = (h) => {
       const out = new Uint8Array(h.length / 2);
       for (let i = 0; i < h.length; i += 2) out[i / 2] = parseInt(h.substring(i, i + 2), 16);
       return out;
     };
-    const fpBufToHex = (buf) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-    const fpB64ToBuf = (b64) => {
+    const bufToHex = (buf) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    const b64ToBuf = (b64) => {
       const bin = atob(b64);
       const out = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
       return out;
     };
-    const fpBufToB64 = (buf) => {
+    const bufToB64 = (buf) => {
       const u = new Uint8Array(buf);
       let s = '';
       for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]);
       return btoa(s);
     };
 
-    async function fpAesEncrypt(key, plain) {
+    async function aesEncrypt(key, plain) {
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, new TextEncoder().encode(plain));
       const buf = new Uint8Array(enc);
       const data = buf.slice(0, buf.length - 16);
       const tag = buf.slice(buf.length - 16);
-      return { d: fpBufToB64(data), v: fpBufToB64(iv), t: fpBufToB64(tag) };
+      return { d: bufToB64(data), v: bufToB64(iv), t: bufToB64(tag) };
     }
-    async function fpAesDecrypt(key, obj) {
-      const d = fpB64ToBuf(obj.d), v = fpB64ToBuf(obj.v), t = fpB64ToBuf(obj.t);
+    async function aesDecrypt(key, obj) {
+      const d = b64ToBuf(obj.d), v = b64ToBuf(obj.v), t = b64ToBuf(obj.t);
       const ct = new Uint8Array(d.length + t.length);
       ct.set(d, 0); ct.set(t, d.length);
       const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: v, tagLength: 128 }, key, ct);
       return new TextDecoder().decode(dec);
     }
 
-    function fpProxyUrl(u) {
+    function proxyUrl(u) {
       return localProxyBase + encodeURIComponent(u) + '&forward=1';
     }
 
-    // Init: ECDH handshake
     const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveKey', 'deriveBits']);
-    const cpk = fpBufToHex(await crypto.subtle.exportKey('raw', kp.publicKey));
-    const initResp = await fetch(fpProxyUrl(apiOrigin + '/d170545d'), {
+    const cpk = bufToHex(await crypto.subtle.exportKey('raw', kp.publicKey));
+    const initResp = await fetch(proxyUrl(apiOrigin + '/e5ea2057'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cpk }),
     });
-    if (!initResp.ok) throw new Error('file-photo.com: 認証の初期化に失敗しました');
+    if (!initResp.ok) throw new Error(`${errorPrefix}: 認証の初期化に失敗しました (HTTP ${initResp.status})`);
     const initJson = await initResp.json();
-    if (!initJson.k) throw new Error('file-photo.com: 認証応答が不正です');
-    const serverPub = await crypto.subtle.importKey('raw', fpHexToBuf(initJson.k), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    if (!initJson.k) throw new Error(`${errorPrefix}: 認証応答が不正です`);
+    const serverPub = await crypto.subtle.importKey('raw', hexToBuf(initJson.k), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
     const sharedBits = await crypto.subtle.deriveBits({ name: 'ECDH', public: serverPub }, kp.privateKey, 256);
     const hash = await crypto.subtle.digest('SHA-256', sharedBits);
     const aesKey = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    const tokenJson = await fpAesDecrypt(aesKey, { d: initJson.d, v: initJson.v, t: initJson.t });
+    const tokenJson = await aesDecrypt(aesKey, { d: initJson.d, v: initJson.v, t: initJson.t });
     const { token } = JSON.parse(tokenJson);
 
-    async function fpCall(path, query, body, method) {
+    async function call(path, query, body, method) {
       const wrapped = { q: query || {}, b: body || null, m: (method || 'GET').toUpperCase() };
-      const enc = await fpAesEncrypt(aesKey, JSON.stringify(wrapped));
-      const r = await fetch(fpProxyUrl(apiOrigin + path), {
+      const enc = await aesEncrypt(aesKey, JSON.stringify(wrapped));
+      const r = await fetch(proxyUrl(apiOrigin + path), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-token': token },
         body: JSON.stringify(enc),
       });
-      if (!r.ok) throw new Error(`file-photo.com: API ${path} HTTP ${r.status}`);
+      if (!r.ok) throw new Error(`${errorPrefix}: API ${path} HTTP ${r.status}`);
       const j = await r.json();
       if (j && j.d && j.v && j.t) {
-        const dec = await fpAesDecrypt(aesKey, j);
+        const dec = await aesDecrypt(aesKey, j);
         return JSON.parse(dec);
       }
       return j;
     }
 
-    // Resolve short link → video info
-    const stripped = code.replace(/a/, '');
-    const father = await fpCall('/3e20aac1', { externalLinks: stripped }, null, 'GET');
-    const resolvedLink = (father && father.data) || stripped;
+    return { call };
+  }
 
-    let info = await fpCall('/7404b196', { link: resolvedLink, domain: 'file-photo.com' }, null, 'GET');
+  // Shared shield endpoints (all hosts in this family use the same paths)
+  const SHIELD_API = {
+    SEARCH: '/4ce30b5d',     // getSearchResult: { externalLinks } → list of items
+    INFO: '/cbbd1afa',       // getInfoByLinkApi: { link, domain } → netDiskInfo
+    LIST: '/25baea2a',       // getListByLinksPageApi: { externalLinks, pageNo, pageSize, sortOrder } for folders
+  };
+
+  async function parseShieldVideo(url, opts) {
+    const errorPrefix = opts.errorPrefix || 'shield';
+    const apiDomain = opts.domain;
+    const defaultName = opts.defaultName || 'video';
+
+    const parsed = new URL(url);
+    const apiOrigin = parsed.origin;
+    const code = parsed.pathname.replace(/^\/+/, '').split('/')[0];
+    if (!code) throw new Error(`${errorPrefix}: URL形式が正しくありません`);
+
+    const client = await createShieldClient(apiOrigin, errorPrefix);
+
+    // Resolve short code → canonical landingPage
+    let landingPage = code;
+    try {
+      const search = await client.call(SHIELD_API.SEARCH, { externalLinks: code }, null, 'GET');
+      const list = search?.data?.netDiskList || [];
+      if (list.length > 0 && list[0].landingPage) {
+        landingPage = list[0].landingPage;
+      }
+    } catch (e) {
+      console.debug(`[${errorPrefix}] search failed, falling back to raw code:`, e);
+    }
+
+    let info = await client.call(SHIELD_API.INFO, { link: landingPage, domain: apiDomain }, null, 'GET');
     let netDiskInfo = info?.data?.netDiskInfo || null;
 
     // If folder, pick first non-folder item and re-fetch
     if (netDiskInfo?.isFolder) {
-      const list = await fpCall('/3b63b6de', { externalLinks: resolvedLink, pageNo: 1, pageSize: 10, sortOrder: '2' }, null, 'GET');
-      const items = list?.data?.list || [];
+      const folder = await client.call(SHIELD_API.LIST, { externalLinks: landingPage, pageNo: 1, pageSize: 10, sortOrder: '2' }, null, 'GET');
+      const items = folder?.data?.list || [];
       const first = items.find(it => !it.isFolder);
-      if (!first) throw new Error('file-photo.com: フォルダ内に動画が見つかりません');
-      const itemInfo = await fpCall('/7404b196', { link: first.landingPage, domain: 'file-photo.com' }, null, 'GET');
+      if (!first) throw new Error(`${errorPrefix}: フォルダ内に動画が見つかりません`);
+      const itemInfo = await client.call(SHIELD_API.INFO, { link: first.landingPage, domain: apiDomain }, null, 'GET');
       netDiskInfo = itemInfo?.data?.netDiskInfo || null;
     }
 
     if (!netDiskInfo || !netDiskInfo.fileUrl) {
-      throw new Error('file-photo.com: 動画URLが取得できませんでした');
+      throw new Error(`${errorPrefix}: 動画URLが取得できませんでした`);
     }
 
-    const baseName = (netDiskInfo.name || code).replace(/\.[^.]+$/, '') || 'file_photo_video';
-    return { playlistUrl: netDiskInfo.fileUrl, name: baseName };
+    const baseName = (netDiskInfo.name || code).replace(/\.[^.]+$/, '') || defaultName;
+    return { playlistUrl: netDiskInfo.fileUrl, directMp4Url: null, name: baseName };
+  }
+
+  async function parseFilePhoto(url) {
+    return parseShieldVideo(url, {
+      domain: 'file-photo.com',
+      errorPrefix: 'file-photo.com',
+      defaultName: 'file_photo_video',
+    });
   }
 
   async function loadFilePhotoVideo(url) {
     const info = await parseFilePhoto(url);
 
     // Reuse twimg-image-style master playlist parsing for quality selection
-    hlsData = { playlistUrl: info.playlistUrl, baseUrl: info.playlistUrl.replace(/\/[^/]*$/, '/'), qualities: [], directMp4Url: null, name: info.name };
-
-    try {
-      const plResp = await proxyFetch(info.playlistUrl);
-      if (plResp.ok) {
-        const plText = await plResp.text();
-        const lines = plText.split('\n').map(l => l.trim()).filter(Boolean);
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
-            const resMatch = lines[i].match(/RESOLUTION=(\d+x\d+)/);
-            const bwMatch = lines[i].match(/BANDWIDTH=(\d+)/);
-            const path = lines[i + 1];
-            if (path && !path.startsWith('#')) {
-              hlsData.qualities.push({ name: resMatch ? resMatch[1] : 'Unknown', bandwidth: bwMatch ? parseInt(bwMatch[1]) : 0, path });
-            }
-          }
-        }
-        hlsData.qualities.sort((a, b) => b.bandwidth - a.bandwidth);
-      }
-    } catch (e) { console.debug('[filePhoto] master playlist fetch failed:', e); }
+    hlsData = {
+      playlistUrl: info.playlistUrl,
+      baseUrl: info.playlistUrl.replace(/\/[^/]*$/, '/'),
+      qualities: await fetchMasterPlaylistQualities(info.playlistUrl),
+      directMp4Url: null,
+      name: info.name,
+    };
 
     if (hlsData.qualities.length > 0) {
       qualitySelect.innerHTML = '';
@@ -1103,14 +1111,15 @@
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // Check for __NUXT_DATA__ (same structure as twimg-image.cc etc.)
-    const nuxtScript = doc.getElementById('__NUXT_DATA__');
-    if (nuxtScript) {
+    // Check for the shield API marker — if the page declares apiShieldInitPath
+    // (Vilolo SPA family: twimg-image.cc, twimg-com.com, vedio.cc, file-photo.com, etc.),
+    // route to the encrypted shield flow.
+    if (/apiShieldInitPath:\s*["']\/e5ea2057["']/.test(html)) {
       try {
         await loadTwimgImageVideo(url);
         return;
       } catch (e) {
-        console.debug('[autoDetect] NUXT_DATA found but parse failed:', e);
+        console.debug('[autoDetect] shield API parse failed:', e);
       }
     }
 
