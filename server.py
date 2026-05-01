@@ -178,7 +178,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             )
             resp.raise_for_status()
         except requests.HTTPError as e:
-            self.send_error(e.response.status_code if e.response else 502, str(e))
+            # NOTE: requests.Response.__bool__ returns self.ok (False for 4xx/5xx),
+            # so use `is not None` instead of truthiness to preserve real status codes.
+            self.send_error(e.response.status_code if e.response is not None else 502, str(e))
             return
         except Exception as e:
             self.send_error(502, f'Upstream error: {e}')

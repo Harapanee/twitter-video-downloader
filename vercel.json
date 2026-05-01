@@ -5,5 +5,19 @@
   "rewrites": [
     { "source": "/proxy", "destination": "/api/proxy" },
     { "source": "/download", "destination": "/api/download" }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    }
   ]
 }
