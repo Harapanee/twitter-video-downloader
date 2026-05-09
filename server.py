@@ -25,6 +25,19 @@ from functools import partial
 import requests
 from requests.adapters import HTTPAdapter
 
+# Optional: curl_cffi impersonates a real browser's TLS fingerprint, which is
+# required to fetch pages behind Cloudflare's bot challenge (e.g. DoodStream
+# embed pages on playmogo.com). Falls back gracefully if unavailable.
+try:
+    from curl_cffi import requests as _cffi_requests
+    _HAS_CURL_CFFI = True
+except ImportError:
+    _cffi_requests = None
+    _HAS_CURL_CFFI = False
+
+# Hosts that require browser-TLS impersonation to bypass Cloudflare.
+CF_PROTECTED_HOSTS_RE = re.compile(r'^(www\.)?playmogo\.com$')
+
 PORT = 8888
 BIND = '127.0.0.1'
 CHUNK_SIZE = 262144
@@ -168,15 +181,35 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(403, f'Host not allowed: {hostname}')
             return
 
-        # Fetch the target URL with connection-pooled session
-        try:
-            resp = _proxy_session.get(
-                target_url,
-                headers={'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/'},
-                timeout=30,
-                stream=True,
+        # Fetch the target URL. CF-protected hosts need curl_cffi's browser-TLS
+        # impersonation; everything else uses the connection-pooled requests session.
+        cf_protected = bool(CF_PROTECTED_HOSTS_RE.match(hostname))
+        if cf_protected and not _HAS_CURL_CFFI:
+            self.send_error(
+                500,
+                'curl_cffi is required to fetch this host. Run: pip3 install curl_cffi'
             )
-            resp.raise_for_status()
+            return
+
+        try:
+            if cf_protected:
+                resp = _cffi_requests.get(
+                    target_url,
+                    headers={'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/'},
+                    impersonate='chrome120',
+                    timeout=30,
+                )
+                if resp.status_code >= 400:
+                    self.send_error(resp.status_code, f'Upstream HTTP {resp.status_code}')
+                    return
+            else:
+                resp = _proxy_session.get(
+                    target_url,
+                    headers={'Referer': f'{target_parsed.scheme}://{target_parsed.hostname}/'},
+                    timeout=30,
+                    stream=True,
+                )
+                resp.raise_for_status()
         except requests.HTTPError as e:
             # NOTE: requests.Response.__bool__ returns self.ok (False for 4xx/5xx),
             # so use `is not None` instead of truthiness to preserve real status codes.
@@ -221,18 +254,28 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_header('Content-Type', content_type)
 
-            content_length = resp.headers.get('Content-Length')
-            if content_length:
-                self.send_header('Content-Length', content_length)
+            if cf_protected:
+                # curl_cffi response is buffered (no streaming) — small pages only.
+                body = resp.content
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                try:
+                    self.wfile.write(body)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+            else:
+                content_length = resp.headers.get('Content-Length')
+                if content_length:
+                    self.send_header('Content-Length', content_length)
 
-            self.end_headers()
+                self.end_headers()
 
-            # Stream response body in chunks
-            try:
-                for chunk in resp.iter_content(chunk_size=CHUNK_SIZE):
-                    self.wfile.write(chunk)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+                # Stream response body in chunks
+                try:
+                    for chunk in resp.iter_content(chunk_size=CHUNK_SIZE):
+                        self.wfile.write(chunk)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
 
     def _handle_convert(self):
         """Receive TS segment URLs as JSON, download them, convert to MP4 with ffmpeg."""

@@ -465,6 +465,11 @@
           <code class="url-example">https://twimg.file-photo.com/axYu1ri</code>
         </div>
         <div class="url-type">
+          <span class="url-host">playmogo.com (DoodStream系)</span>
+          <span class="url-desc">DoodStreamエンベッド (Cloudflare保護のためローカルサーバー必須 / pass_md5経由で MP4 を抽出)</span>
+          <code class="url-example">https://playmogo.com/e/nogwhza3f040</code>
+        </div>
+        <div class="url-type">
           <span class="url-host">その他の動画サイト (自動検出)</span>
           <span class="url-desc">同様の構造を持つサイトを自動検出。ページ内のHLS/MP4動画を探して対応します。</span>
           <code class="url-example">https://any-site.com/video/...</code>
@@ -525,6 +530,7 @@
   const TWEET_HOSTS = ['x.com', 'twitter.com', 'mobile.twitter.com'];
   const GOFILE_BEAUTY_HOSTS = ['www.gofile.beauty', 'gofile.beauty'];
   const FILE_PHOTO_HOST_RE = /\.file-photo\.com$/;
+  const DOODSTREAM_HOSTS = ['playmogo.com', 'www.playmogo.com'];
 
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
   const localProxyBase = isServed ? location.origin + '/proxy?url=' : null;
@@ -973,6 +979,61 @@
     });
   }
 
+  // playmogo.com and other DoodStream embed hosts.
+  // Flow:
+  //   1. Fetch the embed page (Cloudflare-protected → must go through the
+  //      local proxy, which uses curl_cffi to impersonate browser TLS).
+  //   2. Page contains  $.get('/pass_md5/<HASH>/<TOKEN>', ...)
+  //   3. Fetch /pass_md5/... → response body is the partial mp4 URL.
+  //   4. Final URL = <partial> + <random10alphanum> + ?token=<TOKEN>&expiry=<ms>
+  //   5. The CDN (cloudatacdn.com) accepts a same-host Referer, which is what
+  //      the proxy sets by default — so direct playback / download works.
+  async function parseDoodStream(embedUrl) {
+    if (!localProxyBase) {
+      throw new Error('DoodStream系の動画はローカルサーバー経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください');
+    }
+    const parsed = new URL(embedUrl);
+
+    const pageResp = await fetch(localProxyBase + encodeURIComponent(embedUrl));
+    if (!pageResp.ok) {
+      throw new Error(`DoodStream: ページの取得に失敗 (HTTP ${pageResp.status})`);
+    }
+    const html = await pageResp.text();
+
+    const passMatch = html.match(/\.get\(\s*['"](\/pass_md5\/[^'"]+)['"]/);
+    if (!passMatch) {
+      throw new Error('DoodStream: pass_md5 トークンが見つかりません (動画が削除済みか期限切れの可能性)');
+    }
+    const passPath = passMatch[1];
+    const token = passPath.split('/').filter(Boolean).pop();
+
+    const passUrl = parsed.origin + passPath;
+    const passResp = await fetch(localProxyBase + encodeURIComponent(passUrl));
+    if (!passResp.ok) {
+      throw new Error(`DoodStream: pass_md5 取得失敗 (HTTP ${passResp.status})`);
+    }
+    const partialUrl = (await passResp.text()).trim();
+    if (!/^https?:\/\//.test(partialUrl)) {
+      throw new Error('DoodStream: pass_md5 応答が不正です');
+    }
+
+    const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let rand = '';
+    for (let i = 0; i < 10; i++) rand += ALPHA[Math.floor(Math.random() * ALPHA.length)];
+    const finalUrl = partialUrl + rand + '?token=' + token + '&expiry=' + Date.now();
+
+    let name = 'doodstream_video';
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      const tmp = document.createElement('textarea');
+      tmp.innerHTML = titleMatch[1];
+      const decoded = tmp.value.replace(/\s*-\s*DoodStream\s*$/i, '').trim();
+      if (decoded) name = decoded.replace(/[/\\?%*:|"<>]/g, '_').slice(0, 100);
+    }
+
+    return { url: finalUrl, name };
+  }
+
   async function loadFilePhotoVideo(url) {
     const info = await parseFilePhoto(url);
 
@@ -1075,6 +1136,10 @@
         await loadDirectVideo(videoInfo.url);
       } else if (GOFILE_BEAUTY_HOSTS.includes(result.host)) {
         const info = await parseGofileBeauty(result.url);
+        currentUrl = info.url;
+        await loadDirectVideo(info.url);
+      } else if (DOODSTREAM_HOSTS.includes(result.host)) {
+        const info = await parseDoodStream(result.url);
         currentUrl = info.url;
         await loadDirectVideo(info.url);
       } else if (FILE_PHOTO_HOST_RE.test(result.host)) {
