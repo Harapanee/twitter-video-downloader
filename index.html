@@ -989,8 +989,10 @@
   //   5. The CDN (cloudatacdn.com) accepts a same-host Referer, which is what
   //      the proxy sets by default — so direct playback / download works.
   async function parseDoodStream(embedUrl) {
-    if (!localProxyBase) {
-      throw new Error('DoodStream系の動画はローカルサーバー経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください');
+    // CF bypass requires curl_cffi in server.py — Vercel's proxy can't fetch
+    // these pages (server IP gets challenged). Restrict to local server.
+    if (!useServerConvert) {
+      throw new Error('DoodStream系の動画はローカルサーバー(localhost)経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください');
     }
     const parsed = new URL(embedUrl);
 
