@@ -824,13 +824,42 @@
   }
 
   // file-photo.com / video.twimg-image.cc / videy.vedio.cc and friends share an
-  // ECDH+AES-GCM encrypted "API shield". The flow:
-  //   1. POST /e5ea2057 {cpk: <hexECDHpubkey>}  → returns server pubkey + AES-encrypted token
-  //   2. Derive AES-GCM key via ECDH P-256 → SHA-256
-  //   3. POST /<endpoint> with x-token header, body = AES-encrypted({q, b, m})
-  //   4. Decrypt response body with same key
+  // ECDH+AES-GCM encrypted "API shield". As of 2026-05 the whole family migrated
+  // to a "domain shift" scheme: every endpoint path is Caesar-shifted by a seed
+  // derived from the site's main domain, the bearer token rides in the request
+  // body (_tk) instead of an x-token header, and requests use text/plain. Flow:
+  //   1. seed = domainToSeed(mainDomain(host))
+  //   2. POST caesarShiftPath(INIT, seed) {cpk} → server pubkey + AES-encrypted token
+  //   3. Derive AES-GCM key via ECDH P-256 → SHA-256
+  //   4. POST caesarShiftPath(endpoint, seed), body = {...AES-encrypted({q,b,m}), _tk}
+  //   5. Decrypt response body with same key
   // All requests must go through our /proxy?forward=1 because the API is
   // same-origin only (no CORS allow-origin for cross-origin browser callers).
+  const SHIELD_ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  // mainDomain('twimg.file-photo.com') → 'file-photo.com'
+  function shieldMainDomain(host) {
+    const h = (host || '').split(':')[0];
+    if (h === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return h;
+    const parts = h.split('.');
+    return parts.length >= 2 ? parts.slice(-2).join('.') : h;
+  }
+  // djb2 hash → shift amount in [1, ALPHA_LEN-1]
+  function shieldDomainToSeed(s) {
+    let t = 5381;
+    for (let i = 0; i < s.length; i++) t = ((t << 5) + t + s.charCodeAt(i)) | 0;
+    t >>>= 0;
+    return t % (SHIELD_ALPHA.length - 1) + 1;
+  }
+  // Caesar-shift each ALPHA character of a path by seed; other chars (e.g. '/') pass through.
+  function shieldShiftPath(path, seed) {
+    if (!seed) return path;
+    let out = '';
+    for (const ch of path) {
+      const idx = SHIELD_ALPHA.indexOf(ch);
+      out += idx === -1 ? ch : SHIELD_ALPHA[(idx + seed) % SHIELD_ALPHA.length];
+    }
+    return out;
+  }
   async function createShieldClient(apiOrigin, errorPrefix) {
     if (!localProxyBase) {
       throw new Error(`${errorPrefix} の動画はローカルサーバー経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください`);
@@ -878,11 +907,15 @@
       return localProxyBase + encodeURIComponent(u) + '&forward=1';
     }
 
+    // Domain-shift seed: derived from the site's main domain (e.g. file-photo.com).
+    const seed = shieldDomainToSeed(shieldMainDomain(new URL(apiOrigin).hostname));
+    const shiftedUrl = (path) => apiOrigin + shieldShiftPath(path, seed);
+
     const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveKey', 'deriveBits']);
     const cpk = bufToHex(await crypto.subtle.exportKey('raw', kp.publicKey));
-    const initResp = await fetch(proxyUrl(apiOrigin + '/e5ea2057'), {
+    const initResp = await fetch(proxyUrl(shiftedUrl(SHIELD_API.INIT)), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ cpk }),
     });
     if (!initResp.ok) throw new Error(`${errorPrefix}: 認証の初期化に失敗しました (HTTP ${initResp.status})`);
@@ -898,10 +931,10 @@
     async function call(path, query, body, method) {
       const wrapped = { q: query || {}, b: body || null, m: (method || 'GET').toUpperCase() };
       const enc = await aesEncrypt(aesKey, JSON.stringify(wrapped));
-      const r = await fetch(proxyUrl(apiOrigin + path), {
+      const r = await fetch(proxyUrl(shiftedUrl(path)), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-token': token },
-        body: JSON.stringify(enc),
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ ...enc, _tk: token }),
       });
       if (!r.ok) throw new Error(`${errorPrefix}: API ${path} HTTP ${r.status}`);
       const j = await r.json();
@@ -915,11 +948,13 @@
     return { call };
   }
 
-  // Shared shield endpoints (all hosts in this family use the same paths)
+  // Shared shield endpoints (base paths; Caesar-shifted per-domain at request time).
+  // All hosts in this family ship the same build, so these hashes match across them.
   const SHIELD_API = {
-    SEARCH: '/4ce30b5d',     // getSearchResult: { externalLinks } → list of items
-    INFO: '/cbbd1afa',       // getInfoByLinkApi: { link, domain } → netDiskInfo
-    LIST: '/25baea2a',       // getListByLinksPageApi: { externalLinks, pageNo, pageSize, sortOrder } for folders
+    INIT: '/cc54dad37a',     // ECDH init: { cpk } → server pubkey + AES-encrypted token
+    SEARCH: '/0177394940',   // getSearchResult: { externalLinks } → netDiskList (resolves canonical landingPage)
+    INFO: '/fb91788f2b',     // getInfoApi: { externalLinks, domain } → data.info.netDiskInfo
+    LIST: '/61abc8d380',     // getListByLinksPageApi: { externalLinks, pageNo, pageSize, sortOrder } for folders
   };
 
   async function parseShieldVideo(url, opts) {
@@ -946,17 +981,21 @@
       console.debug(`[${errorPrefix}] search failed, falling back to raw code:`, e);
     }
 
-    let info = await client.call(SHIELD_API.INFO, { link: landingPage, domain: apiDomain }, null, 'GET');
-    let netDiskInfo = info?.data?.netDiskInfo || null;
+    // INFO now nests under data.info.netDiskInfo (older builds used
+    // data.netDiskInfo); accept either for resilience.
+    const readNetDiskInfo = (resp) => resp?.data?.info?.netDiskInfo || resp?.data?.netDiskInfo || null;
+
+    let info = await client.call(SHIELD_API.INFO, { externalLinks: landingPage, domain: apiDomain }, null, 'GET');
+    let netDiskInfo = readNetDiskInfo(info);
 
     // If folder, pick first non-folder item and re-fetch
     if (netDiskInfo?.isFolder) {
       const folder = await client.call(SHIELD_API.LIST, { externalLinks: landingPage, pageNo: 1, pageSize: 10, sortOrder: '2' }, null, 'GET');
-      const items = folder?.data?.list || [];
+      const items = folder?.data?.list || folder?.data?.info?.list || [];
       const first = items.find(it => !it.isFolder);
       if (!first) throw new Error(`${errorPrefix}: フォルダ内に動画が見つかりません`);
-      const itemInfo = await client.call(SHIELD_API.INFO, { link: first.landingPage, domain: apiDomain }, null, 'GET');
-      netDiskInfo = itemInfo?.data?.netDiskInfo || null;
+      const itemInfo = await client.call(SHIELD_API.INFO, { externalLinks: first.landingPage, domain: apiDomain }, null, 'GET');
+      netDiskInfo = readNetDiskInfo(itemInfo);
     }
 
     if (!netDiskInfo || (!netDiskInfo.fileUrl && !netDiskInfo.originUrl)) {
@@ -1039,12 +1078,22 @@
   async function loadFilePhotoVideo(url) {
     const info = await parseFilePhoto(url);
 
+    // No HLS playlist (mp4-only video) → play/download the direct mp4.
+    if (!info.playlistUrl) {
+      if (info.directMp4Url) {
+        currentUrl = info.directMp4Url;
+        await loadDirectVideo(info.directMp4Url);
+        return;
+      }
+      throw new Error('file-photo.com: 動画URLが取得できませんでした');
+    }
+
     // Reuse twimg-image-style master playlist parsing for quality selection
     hlsData = {
       playlistUrl: info.playlistUrl,
       baseUrl: info.playlistUrl.replace(/\/[^/]*$/, '/'),
       qualities: await fetchMasterPlaylistQualities(info.playlistUrl),
-      directMp4Url: null,
+      directMp4Url: info.directMp4Url || null,
       name: info.name,
     };
 
