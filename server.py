@@ -297,8 +297,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(400, 'No segments provided')
             return
 
-        if len(segment_urls) > 500:
-            self.send_error(400, 'Too many segments (max 500)')
+        # Safety cap against runaway requests. Long videos (e.g. ~4s HLS
+        # segments) easily exceed 500; a 48-min clip is ~720 segments. ffmpeg
+        # uses -c copy (no re-encode) so high counts stay fast.
+        if len(segment_urls) > 3000:
+            self.send_error(400, 'Too many segments (max 3000)')
             return
 
         # Validate all URLs
@@ -360,7 +363,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 '-c', 'copy',
                 '-movflags', '+faststart',
                 mp4_path,
-            ], capture_output=True, timeout=120)
+            ], capture_output=True, timeout=600)
 
             if result.returncode != 0:
                 sys.stderr.write(f'ffmpeg error: {result.stderr.decode()}\n')
