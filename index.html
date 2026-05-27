@@ -1192,7 +1192,9 @@
       } else if (DOODSTREAM_HOSTS.includes(result.host)) {
         const info = await parseDoodStream(result.url);
         currentUrl = info.url;
-        await loadDirectVideo(info.url);
+        // CDN (cloudatacdn.com) rejects direct <video> requests from the browser
+        // (Referer policy), so playback must go through the local proxy too.
+        await loadDirectVideo(localProxyBase + encodeURIComponent(info.url));
       } else if (FILE_PHOTO_HOST_RE.test(result.host)) {
         await loadFilePhotoVideo(result.url);
       } else if (KNOWN_HLS_HOSTS.includes(result.host)) {
