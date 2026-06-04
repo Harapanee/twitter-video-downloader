@@ -951,10 +951,10 @@
   // Shared shield endpoints (base paths; Caesar-shifted per-domain at request time).
   // All hosts in this family ship the same build, so these hashes match across them.
   const SHIELD_API = {
-    INIT: '/cc54dad37a',     // ECDH init: { cpk } → server pubkey + AES-encrypted token
-    SEARCH: '/0177394940',   // getSearchResult: { externalLinks } → netDiskList (resolves canonical landingPage)
-    INFO: '/fb91788f2b',     // getInfoApi: { externalLinks, domain } → data.info.netDiskInfo
-    LIST: '/61abc8d380',     // getListByLinksPageApi: { externalLinks, pageNo, pageSize, sortOrder } for folders
+    INIT: '/f849241dfc',     // ECDH init: { cpk } → server pubkey + AES-encrypted token
+    SEARCH: '/0eac0df581',   // getSearchResult: { externalLinks } → netDiskList (resolves canonical landingPage)
+    INFO: '/55540d487e',     // getInfoApi: { externalLinks, domain } → data.info.netDiskInfo
+    LIST: '/ab5352f0bc',     // getListByLinksPageApi: { externalLinks, pageNo, pageSize, sortOrder } for folders
   };
 
   async function parseShieldVideo(url, opts) {
@@ -1236,8 +1236,9 @@
 
     // Check for the shield API marker — if the page declares apiShieldInitPath
     // (Vilolo SPA family: twimg-image.cc, twimg-com.com, vedio.cc, file-photo.com, etc.),
-    // route to the encrypted shield flow.
-    if (/apiShieldInitPath:\s*["']\/e5ea2057["']/.test(html)) {
+    // route to the encrypted shield flow. Match any init hash (it rotates between
+    // builds) rather than a specific value, so new sibling hosts auto-route.
+    if (/apiShieldInitPath:\s*["']\/[0-9a-f]{6,}["']/.test(html)) {
       try {
         await loadTwimgImageVideo(url);
         return;
