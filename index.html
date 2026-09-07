@@ -465,6 +465,11 @@
           <code class="url-example">https://twimg.file-photo.com/axYu1ri</code>
         </div>
         <div class="url-type">
+          <span class="url-host">gofile.host / video.twimg-image.com 等 (Video Landing系)</span>
+          <span class="url-desc">短縮URLに対応 (land-page APIから動画情報を取得 / HLS形式・画質選択可能)</span>
+          <code class="url-example">https://video.twimg-image.com/lrqHO8</code>
+        </div>
+        <div class="url-type">
           <span class="url-host">playmogo.com (DoodStream系)</span>
           <span class="url-desc">DoodStreamエンベッド (Cloudflare保護のためローカルサーバー必須 / pass_md5経由で MP4 を抽出)</span>
           <code class="url-example">https://playmogo.com/e/nogwhza3f040</code>
@@ -531,6 +536,18 @@
   const GOFILE_BEAUTY_HOSTS = ['www.gofile.beauty', 'gofile.beauty'];
   const FILE_PHOTO_HOST_RE = /\.file-photo\.com$/;
   const DOODSTREAM_HOSTS = ['playmogo.com', 'www.playmogo.com'];
+  // NOTE: video.twimg-image.com is the "Video Landing" family, NOT the shield
+  // family that video.twimg-image.cc belongs to. Similar names, different APIs —
+  // keep this an exact host list rather than a twimg-image regex.
+  const LAND_PAGE_HOSTS = ['gofile.host', 'www.gofile.host', 'video.twimg-image.com', 'www.video.twimg-image.com'];
+  // Last known API origin for the "Video Landing" SPA family. Only a fallback:
+  // the real origin is read out of the page's /assets/app-*.js bundle at runtime
+  // because it rotates between builds.
+  const LAND_PAGE_API_FALLBACK = 'https://rwzugqnp.fun800.click';
+  // The SPA shell's entry bundle. Older builds emitted /assets/app-<hex>.js;
+  // the 2026-09 Vite builds emit /assets/index-<base64url>.js (e.g. index-GmsTj-Nj.js),
+  // so accept either prefix and a non-hex hash.
+  const LAND_PAGE_BUNDLE_RE = /src="(\/assets\/(?:app|index)-[A-Za-z0-9_-]{6,}\.js)"/i;
 
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
   const localProxyBase = isServed ? location.origin + '/proxy?url=' : null;
@@ -821,6 +838,78 @@
     if (!m) throw new Error('gofile.beauty: 動画URLを抽出できませんでした');
 
     return { url: m[1], name: code };
+  }
+
+  // "Video Landing" SPA family (gofile.host and siblings). The landing page is an
+  // empty shell (<div id="app">); the video metadata lives behind a plain JSON API
+  // whose origin is baked into the hashed entry bundle (LAND_PAGE_BUNDLE_RE). Read
+  // the bundle to discover that origin so sibling/rotated builds keep working.
+  async function discoverLandPageApiBase(pageUrl, html) {
+    const m = html.match(LAND_PAGE_BUNDLE_RE);
+    if (!m) return LAND_PAGE_API_FALLBACK;
+    try {
+      const jsUrl = new URL(m[1], pageUrl).href;
+      const resp = await fetchWithProxy(jsUrl);
+      const js = await resp.text();
+      // The origin literal is quoted with " or ` depending on the build.
+      const Q = '["\'`]';
+      const hit = js.match(new RegExp(`new URL\\(String\\(${Q}(https://[^"'\`\\s]+)${Q}\\)`))
+               // 2026-09 build: the base is the 1st arg of a helper whose 2nd arg
+               // is location.origin — e.g. hj(`https://X`, globalThis.window?.location?.origin||``)
+               || js.match(new RegExp(`${Q}(https://[a-z0-9.-]+)${Q}\\s*,\\s*[^,()]{0,40}location[?.]*origin`, 'i'))
+               || js.match(new RegExp(`${Q}(https://[a-z0-9.-]+)${Q}\\s*\\)?\\.trim\\(\\)`, 'i'));
+      if (hit) return hit[1].replace(/\/+$/, '');
+    } catch (e) {
+      console.debug('[landPage] API base discovery failed:', e);
+    }
+    return LAND_PAGE_API_FALLBACK;
+  }
+
+  async function parseLandPage(url) {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    const code = parsed.pathname.replace(/^\/+/, '').replace(/\/+$/, '').split('/').pop();
+    if (!code) throw new Error(`${host}: URL形式が正しくありません`);
+
+    let apiBase = LAND_PAGE_API_FALLBACK;
+    try {
+      apiBase = await discoverLandPageApiBase(url, await fetchPageHtml(url));
+    } catch (e) {
+      console.debug('[landPage] page fetch failed, using fallback API base:', e);
+    }
+
+    const apiUrl = `${apiBase}/app-api/flow/land-page/getInfo`
+      + `?externalLinks=${encodeURIComponent(code)}`
+      + `&domain=${encodeURIComponent(host.replace(/^www\./, ''))}`;
+
+    let data;
+    try {
+      const resp = await fetchWithProxy(apiUrl);
+      data = JSON.parse(await resp.text());
+    } catch (e) {
+      throw new Error(`${host}: 動画情報APIの取得に失敗しました`);
+    }
+    if (!data || Number(data.code) !== 0) {
+      throw new Error(`${host}: ${(data && data.msg) || '動画情報を取得できませんでした'}`);
+    }
+
+    const disk = (((data.data || {}).info) || {}).netDiskInfo || {};
+    if (disk.isFolder) throw new Error(`${host}: フォルダURLには対応していません（動画個別のURLを指定してください）`);
+
+    const videoUrl = disk.fileUrl || disk.originUrl;
+    if (!videoUrl) throw new Error(`${host}: 動画URLが取得できませんでした`);
+
+    const rawName = String(disk.name || code).replace(/\.[a-z0-9]{2,5}$/i, '');
+    const name = (rawName.replace(/[/\\?%*:|"<>]/g, '_').trim() || code).slice(0, 100);
+
+    const isHls = /\.m3u8(\?|$)/i.test(videoUrl);
+    return {
+      playlistUrl: isHls ? videoUrl : null,
+      baseUrl: isHls ? videoUrl.replace(/\/[^/]*$/, '/') : '',
+      qualities: isHls ? await fetchMasterPlaylistQualities(videoUrl) : [],
+      directMp4Url: isHls ? null : videoUrl,
+      name,
+    };
   }
 
   // file-photo.com / video.twimg-image.cc / videy.vedio.cc and friends share an
@@ -1197,6 +1286,8 @@
         await loadDirectVideo(localProxyBase + encodeURIComponent(info.url));
       } else if (FILE_PHOTO_HOST_RE.test(result.host)) {
         await loadFilePhotoVideo(result.url);
+      } else if (LAND_PAGE_HOSTS.includes(result.host)) {
+        await loadLandPageVideo(result.url);
       } else if (KNOWN_HLS_HOSTS.includes(result.host)) {
         await loadTwimgImageVideo(result.url);
       } else if (DIRECT_VIDEO_HOSTS.includes(result.host) || isDirectVideoUrl(result.url)) {
@@ -1244,6 +1335,18 @@
         return;
       } catch (e) {
         console.debug('[autoDetect] shield API parse failed:', e);
+      }
+    }
+
+    // "Video Landing" SPA shell (gofile.host / video.twimg-image.com family):
+    // empty <div id="app"> plus a hashed /assets/{app,index}-*.js bundle. Match the
+    // asset pattern so sibling domains auto-route without a host list entry.
+    if (LAND_PAGE_BUNDLE_RE.test(html) && /<div id="app">\s*<\/div>/i.test(html)) {
+      try {
+        await loadLandPageVideo(url);
+        return;
+      } catch (e) {
+        console.debug('[autoDetect] land-page API parse failed:', e);
       }
     }
 
@@ -1333,7 +1436,17 @@
 
   async function loadTwimgImageVideo(url) {
     hlsData = await parseTwimgImagePage(url);
+    await presentHlsData();
+  }
 
+  async function loadLandPageVideo(url) {
+    hlsData = await parseLandPage(url);
+    await presentHlsData();
+  }
+
+  // Renders whatever is in hlsData: quality selector + HLS playback, falling back
+  // to direct mp4 playback when the source has no playlist.
+  async function presentHlsData() {
     if (hlsData.qualities.length === 0) {
       if (hlsData.directMp4Url) {
         const mp4Url = hlsData.directMp4Url;
