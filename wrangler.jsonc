@@ -1,0 +1,7 @@
+{
+  "name": "twitter-video-downloader",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "account_id": "c582d9755170604d64df30aa22a5b42b",
+  "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": ["/proxy", "/download", "/api/*"] },
+}

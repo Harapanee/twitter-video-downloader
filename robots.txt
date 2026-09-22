@@ -1,4 +1,14 @@
 User-agent: *
 Allow: /
+Disallow: /proxy
+Disallow: /download
+Disallow: /api/
 
-Sitemap: https://twitter-video-downloader.vercel.app/sitemap.xml
+User-agent: GPTBot
+Disallow: /
+User-agent: ClaudeBot
+Disallow: /
+User-agent: CCBot
+Disallow: /
+
+Sitemap: https://twitter-video-downloader.k-hara.workers.dev/sitemap.xml

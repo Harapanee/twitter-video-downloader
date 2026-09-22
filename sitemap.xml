@@ -1,121 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/guide.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/guide.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/faq.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/faq.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/about.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/about.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/browser-evolution-web-capabilities.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/browser-evolution-web-capabilities.html</loc>
     <lastmod>2026-04-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/sns-video-reach-tips.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/sns-video-reach-tips.html</loc>
     <lastmod>2026-04-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/video-metadata-explained.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/video-metadata-explained.html</loc>
     <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/twitter-video-save-troubleshooting.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/twitter-video-save-troubleshooting.html</loc>
     <lastmod>2026-03-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/streaming-technology-evolution.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/streaming-technology-evolution.html</loc>
     <lastmod>2026-03-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/hls-mp4-difference.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/hls-mp4-difference.html</loc>
     <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/video-file-formats-guide.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/video-file-formats-guide.html</loc>
     <lastmod>2026-03-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/twitter-video-quality-guide.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/twitter-video-quality-guide.html</loc>
     <lastmod>2026-03-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/smartphone-video-sharing-tips.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/smartphone-video-sharing-tips.html</loc>
     <lastmod>2026-03-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/browser-video-download-safety.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/browser-video-download-safety.html</loc>
     <lastmod>2026-03-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/video-compression-explained.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/video-compression-explained.html</loc>
     <lastmod>2026-03-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/blog/webassembly-video-processing.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/blog/webassembly-video-processing.html</loc>
     <lastmod>2026-03-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/privacy.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/privacy.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/terms.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/terms.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://twitter-video-downloader.vercel.app/contact.html</loc>
+    <loc>https://twitter-video-downloader.k-hara.workers.dev/contact.html</loc>
     <lastmod>2026-04-06</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>

@@ -1,0 +1,8 @@
+api/
+server.py
+__pycache__/
+requirements.txt
+.git/
+CLAUDE.md
+HANDOFF.md
+.wrangler/
