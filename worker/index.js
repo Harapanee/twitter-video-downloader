@@ -26,13 +26,19 @@ async function proxy(req) {
   if (!r.ok) return err(r.status, r.statusText);
   let ct = r.headers.get('content-type') || 'application/octet-stream';
   const isM3u8 = target.endsWith('.m3u8') || ct.toLowerCase().includes('mpegurl');
+  const isDownload = url.searchParams.has('download');
   if (isM3u8) {
     const base = target.slice(0, target.lastIndexOf('/') + 1);
     const text = (await r.text()).split('\n').map((l) => { const s = l.trim(); return s && !s.startsWith('#') && !s.startsWith('http') ? base + s : l; }).join('\n');
-    return new Response(text, { headers: { 'Content-Type': 'application/vnd.apple.mpegurl', ...CORS } });
+    const headers = { 'Content-Type': 'application/vnd.apple.mpegurl', ...CORS };
+    if (isDownload) {
+      headers['Content-Type'] = 'application/octet-stream';
+      headers['Content-Disposition'] = `attachment; filename="${(url.searchParams.get('filename') || 'video.m3u8').replace(/"/g, '_')}"`;
+    }
+    return new Response(text, { headers });
   }
   const headers = { 'Content-Type': ct, ...CORS };
-  if (url.searchParams.has('download')) {
+  if (isDownload) {
     headers['Content-Type'] = 'application/octet-stream';
     headers['Content-Disposition'] = `attachment; filename="${(url.searchParams.get('filename') || 'video.mp4').replace(/"/g, '_')}"`;
   }
@@ -48,6 +54,7 @@ async function segments(req) {
   if (!segs.length) return err(400, 'No segments provided');
   if (!segs.every(allowed)) return err(403, 'Host not allowed');
   const responses = await Promise.all(segs.map((s) => up(s)));
+  for (const r of responses) { if (!r.ok) return err(502, `Segment download failed: ${r.status}`); }
   const { readable, writable } = new TransformStream();
   (async () => { for (const r of responses) await r.body.pipeTo(writable, { preventClose: true }); await writable.close(); })();
   return new Response(readable, { headers: { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${String(filename).replace(/"/g, '_')}"`, ...CORS } });
