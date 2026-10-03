@@ -21,6 +21,9 @@
   ファイル監視が拾い「Reloading local server...」が無限ループする(1リクエストで368回を実測)。
   `.assetsignore` はアップロード除外のみで監視は止めない。外に出せば0回。
 
+- **localhost の「サーバー変換に失敗」は修正済み**(2026-10-03)。旧 server.py の `/convert` 前提だった
+  `useServerConvert` を false 固定にし、ローカルも本番と同じブラウザ内変換に統一。DoodStream系は
+  server.py(curl_cffi)依存だったため現在非対応。
 - **gofile.run も Video Landing 系**(2026-10-03 追加)。Video Landing 系の着地ページは
   ワーカーの `ALLOWED_HOSTS_RE` にも入れること。入れないと `/proxy` が403 → 公開CORSプロキシ
   頼みになり(全滅して)解析が「読み込み中...」で止まる。

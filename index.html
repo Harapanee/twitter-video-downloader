@@ -551,7 +551,9 @@
 
   const isServed = location.protocol === 'http:' || location.protocol === 'https:';
   const localProxyBase = isServed ? location.origin + '/proxy?url=' : null;
-  const useServerConvert = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  // server.py (/convert, curl_cffi) was removed with the Cloudflare migration; the
+  // worker has no /convert, so localhost must take the same in-browser path as prod.
+  const useServerConvert = false;
 
   const subtitleText = document.getElementById('subtitleText');
   if (isServed) {
@@ -1120,7 +1122,7 @@
     // CF bypass requires curl_cffi in server.py — Vercel's proxy can't fetch
     // these pages (server IP gets challenged). Restrict to local server.
     if (!useServerConvert) {
-      throw new Error('DoodStream系の動画はローカルサーバー(localhost)経由でのみ取得できます。python3 server.py で起動した http://localhost:8888 を開いてください');
+      throw new Error('DoodStream系の動画は現在対応していません');
     }
     const parsed = new URL(embedUrl);
 
