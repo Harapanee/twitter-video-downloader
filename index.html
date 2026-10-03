@@ -465,7 +465,7 @@
           <code class="url-example">https://twimg.file-photo.com/axYu1ri</code>
         </div>
         <div class="url-type">
-          <span class="url-host">gofile.host / video.twimg-image.com 等 (Video Landing系)</span>
+          <span class="url-host">gofile.host / gofile.run / video.twimg-image.com 等 (Video Landing系)</span>
           <span class="url-desc">短縮URLに対応 (land-page APIから動画情報を取得 / HLS形式・画質選択可能)</span>
           <code class="url-example">https://video.twimg-image.com/lrqHO8</code>
         </div>
@@ -539,7 +539,7 @@
   // NOTE: video.twimg-image.com is the "Video Landing" family, NOT the shield
   // family that video.twimg-image.cc belongs to. Similar names, different APIs —
   // keep this an exact host list rather than a twimg-image regex.
-  const LAND_PAGE_HOSTS = ['gofile.host', 'www.gofile.host', 'video.twimg-image.com', 'www.video.twimg-image.com'];
+  const LAND_PAGE_HOSTS = ['gofile.host', 'www.gofile.host', 'gofile.run', 'www.gofile.run', 'video.twimg-image.com', 'www.video.twimg-image.com'];
   // Last known API origin for the "Video Landing" SPA family. Only a fallback:
   // the real origin is read out of the page's /assets/app-*.js bundle at runtime
   // because it rotates between builds.

@@ -21,6 +21,9 @@
   ファイル監視が拾い「Reloading local server...」が無限ループする(1リクエストで368回を実測)。
   `.assetsignore` はアップロード除外のみで監視は止めない。外に出せば0回。
 
+- **gofile.run も Video Landing 系**(2026-10-03 追加)。Video Landing 系の着地ページは
+  ワーカーの `ALLOWED_HOSTS_RE` にも入れること。入れないと `/proxy` が403 → 公開CORSプロキシ
+  頼みになり(全滅して)解析が「読み込み中...」で止まる。
 - **`video.twimg-image.com` は shield 系ではなく Video Landing (land-page API) 系**。
   名前が酷似する `video.twimg-image.cc` は暗号化 shield 系で**別物**。ホスト名から系統を
   推測せず、バンドルに `apiShieldInitPath` があるか / `app-api/flow/land-page/getInfo` を
