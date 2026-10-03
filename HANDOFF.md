@@ -6,7 +6,7 @@
 > Stop フックが機械的に強制する: セッション中の変更やコミットがこのファイルより新しいと終了がブロックされる。
 > 引き継ぐ内容が無いときは「最終更新」日付だけ更新すればよい。
 
-最終更新: 2026-09-07
+最終更新: 2026-10-03
 
 ## いま進行中のこと
 
@@ -15,6 +15,11 @@
 | (なし) | | |
 
 ## 直近の知見(CLAUDE.md に入れたもの以外)
+
+- **ローカル開発は `npx wrangler dev --persist-to ~/.cache/hozon-wrangler` で起動する**。
+  assets.directory が `.`(ルート)なので、既定の `.wrangler/state` への書き込みを
+  ファイル監視が拾い「Reloading local server...」が無限ループする(1リクエストで368回を実測)。
+  `.assetsignore` はアップロード除外のみで監視は止めない。外に出せば0回。
 
 - **`video.twimg-image.com` は shield 系ではなく Video Landing (land-page API) 系**。
   名前が酷似する `video.twimg-image.cc` は暗号化 shield 系で**別物**。ホスト名から系統を
